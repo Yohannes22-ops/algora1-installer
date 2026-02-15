@@ -255,7 +255,7 @@ install_local_cli() {
   # If we're running from a pipe (stdin), we can't cp "$0".
   # Download installer content to the target instead.
   if [ "${0##*/}" = "bash" ] || [ "${0##*/}" = "sh" ] || [ ! -f "${0}" ]; then
-    : "${ALGORA1_INSTALL_URL:=https://raw.githubusercontent.com/Yohannes22-ops/algora1-installer/main/algora1.sh}"
+    : "${ALGORA1_INSTALL_URL:=https://raw.githubusercontent.com/algora01/algora1-installer/main/algora1.sh}"
     need_cmd curl || ui_die "curl is required to install the local command."
 
     ui_info "Installing local command by downloading from ${ALGORA1_INSTALL_URL}"
