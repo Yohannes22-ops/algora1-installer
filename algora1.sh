@@ -1624,18 +1624,19 @@ live_status_menu() {
   touch "$file" >/dev/null 2>&1 || true
   info "Viewing: $file (Ctrl+C to return)"
 
-  local old_trap
-  old_trap="$(trap -p INT || true)"
-  trap 'trap - INT; return 0' INT
+  local stop=0
+  trap 'stop=1' INT
 
   while true; do
+    if [ "$stop" -eq 1 ]; then
+      trap - INT
+      echo ""
+      return 0
+    fi
     clear || true
     cat "$file" 2>/dev/null || echo "(no status yet)"
     sleep 1
   done
-
-  eval "$old_trap" 2>/dev/null || trap - INT
-  return 0
 }
 
 troubleshoot_menu() {
@@ -1661,8 +1662,29 @@ troubleshoot_menu() {
   touch "$logfile" >/dev/null 2>&1 || true
   info "Tailing: $logfile (Ctrl+C to return)"
 
-  # Tail last 200 lines, then follow
-  tail -n 200 -f "$logfile"
+  local stop=0
+  trap 'stop=1' INT
+
+  while true; do
+    tail -n 200 -f "$logfile" &
+    local tp=$!
+
+    while kill -0 "$tp" 2>/dev/null; do
+      if [ "$stop" -eq 1 ]; then
+        kill "$tp" 2>/dev/null || true
+        wait "$tp" 2>/dev/null || true
+        trap - INT
+        echo ""
+        return 0
+      fi
+      sleep 0.1
+    done
+
+    # tail ended on its own (log rotated etc) → restart unless user hit Ctrl+C
+    [ "$stop" -eq 1 ] && { trap - INT; echo ""; return 0; }
+    sleep 0.2
+  done
+
 }
 
 main_loop() {
