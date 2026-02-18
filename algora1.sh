@@ -1663,7 +1663,11 @@ live_status_menu() {
   old_trap="$(trap -p INT || true)"
   trap 'trap - INT; return 0' INT
 
-  tail -n 200 -f "$file"
+  while true; do
+    clear || true
+    cat "$file" 2>/dev/null || echo "(no status yet)"
+    sleep 1
+  done
 
   eval "$old_trap" 2>/dev/null || trap - INT
   return 0
