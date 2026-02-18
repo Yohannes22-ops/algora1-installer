@@ -1519,6 +1519,37 @@ live_status_for_engine() {
   esac
 }
 
+clear_logs_menu() {
+  local choice
+  choice="$(choose "Clear logs" \
+    "bexp_investing.log" \
+    "tsla_investing.log" \
+    "nvda_investing.log" \
+    "pmny_investing.log" \
+    "ALL logs" \
+    "Back")"
+
+  [ "$choice" = "Back" ] && return 0
+
+  if [ "$choice" = "ALL logs" ]; then
+    if confirm "Clear ALL investing logs?"; then
+      : > "bexp_investing.log" 2>/dev/null || true
+      : > "tsla_investing.log" 2>/dev/null || true
+      : > "nvda_investing.log" 2>/dev/null || true
+      : > "pmny_investing.log" 2>/dev/null || true
+      ok "All logs cleared."
+    fi
+    return 0
+  fi
+
+  if confirm "Clear '$choice'?"; then
+    : > "$choice" 2>/dev/null || true
+    ok "Cleared: $choice"
+  fi
+
+  return 0
+}
+
 detect_running_engine_best_effort() {
   local line
   line="$(pgrep -af '(BEXP|PMNY|TSLA|NVDA)' 2>/dev/null | head -n 1 || true)"
@@ -1696,12 +1727,14 @@ main_loop() {
       "Running sessions" \
       "Live Status" \
       "Troubleshoot" \
+      "Clear logs" \
       "Exit")"
 
     case "$selection" in
       "Running sessions") running_sessions_menu ;;
       "Live Status") live_status_menu ;;
       "Troubleshoot") troubleshoot_menu ;;
+      "Clear logs") clear_logs_menu ;;
       "Exit") exit 0 ;;
       *) exit 0 ;;
     esac
