@@ -1526,18 +1526,18 @@ clear_logs_menu() {
     "tsla_investing.log" \
     "nvda_investing.log" \
     "pmny_investing.log" \
-    "ALL logs" \
+    "Clear all logs" \
     "Back")"
 
   [ "$choice" = "Back" ] && return 0
 
-  if [ "$choice" = "ALL logs" ]; then
+  if [ "$choice" = "Clear all logs" ]; then
     if confirm "Clear ALL investing logs?"; then
       : > "bexp_investing.log" 2>/dev/null || true
       : > "tsla_investing.log" 2>/dev/null || true
       : > "nvda_investing.log" 2>/dev/null || true
       : > "pmny_investing.log" 2>/dev/null || true
-      ok "All logs cleared."
+      ok "Logs cleared."
     fi
     return 0
   fi
