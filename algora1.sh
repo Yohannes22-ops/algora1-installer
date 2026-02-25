@@ -18,10 +18,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_a71ca30c54f1409986f5875beb8300c2.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_ac0794484bcf42049b317c0ea2da2ec7.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_a36ecf3e7ad442d58cd1463187d1ba67.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_7064ef991c6846ae99f0ef2ac0c33fcc.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_664d7d203bdf43b8b0f2ef061aa17473.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_146c239deb5f44a3959a74cd2f38874d.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_c6d33c1ee0db4649ad14883173e4e73a.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_abb7b28613a3438684729ac6fa99fcc9.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -31,7 +31,7 @@ CFG_FILE="${CFG_DIR}/config.env"
 
 QUIET="${QUIET:-1}"
 
-log()  { printf "\033[1;32m[algora1]\033[0m %s\n" "$*" >&2; }
+log()  { printf "\033[1;32m[ALGORA1]\033[0m %s\n" "$*" >&2; }
 logq() { [ "${QUIET}" = "1" ] || log "$@"; }
 warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$*" >&2; }
 die()  { printf "\n\033[1;31m[error]\033[0m %s\n" "$*" >&2; exit 1; }
@@ -61,9 +61,9 @@ ui_header() {
   if ui_has_gum; then
     gum style --border rounded --padding "1 2" --margin "0 0 1 0" \
       --border-foreground ${C_ACCENT} \
-      "$(printf "🎿 algora1 Installer\nAutomated investment engine deployment.\nmodern installer mode")" >&2
+      "$(printf "ALGORA1 Software\nAutomated investment engine deployment.\nmodern Terminal UI")" >&2
   else
-    log "🎿 algora1 Installer"
+    log "ALGORA1 Software"
     log "Automated investment engine deployment."
   fi
 }
@@ -235,7 +235,7 @@ install_linux_desktop_shortcut() {
   local icon_url="$1"
   local apps_dir="${HOME}/.local/share/applications"
   local icon_dir="${HOME}/.local/share/icons"
-  local bin_path="${HOME}/.local/bin/algora1"
+  local bin_path="${HOME}/.local/bin/algora1"   # keep lowercase command
 
   mkdir -p "$apps_dir" "$icon_dir"
 
@@ -244,19 +244,20 @@ install_linux_desktop_shortcut() {
     curl -fsSL "$icon_url" -o "$icon_path" || true
   fi
 
-  cat > "$apps_dir/algora1.desktop" <<EOF
+  # File name (what you see in the filesystem)
+  cat > "$apps_dir/ALGORA1.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=algora1
-Comment=algora1 control panel
+Name=ALGORA1
+Comment=ALGORA1 control panel
 Exec=$bin_path
 Terminal=true
 Icon=$icon_path
 Categories=Finance;Utility;
 EOF
 
-  chmod +x "$apps_dir/algora1.desktop"
-  ui_ok "Linux shortcut created: $apps_dir/algora1.desktop"
+  chmod +x "$apps_dir/ALGORA1.desktop"
+  ui_ok "Linux shortcut created: $apps_dir/ALGORA1.desktop"
 }
 
 install_local_cli() {
@@ -422,8 +423,8 @@ is_trusted_algora1_app_bundle() {
 
 ensure_macos_app_bundle_present() {
   local icns_path="${1:-}"
-  local app_root="${HOME}/Applications/algora1.app"
-  local desktop_app="${HOME}/Desktop/algora1.app"
+  local app_root="${HOME}/Applications/ALGORA1.app"
+  local desktop_app="${HOME}/Desktop/ALGORA1.app"
 
   if is_trusted_algora1_app_bundle "$app_root"; then
     ui_ok "macOS app bundle already present: $app_root"
@@ -435,7 +436,7 @@ ensure_macos_app_bundle_present() {
     return 0
   fi
 
-  ui_info "Creating macOS Dock app (algora1.app)…"
+  ui_info "Creating macOS Dock app (ALGORA1.app)…"
   install_macos_app_bundle "$icns_path"
 
   if ! is_trusted_algora1_app_bundle "$app_root"; then
@@ -454,7 +455,7 @@ ensure_macos_app_bundle_present() {
 install_macos_app_bundle() {
 
   local icns_path="${1:-}" 
-  local app_root="${HOME}/Applications/algora1.app"
+  local app_root="${HOME}/Applications/ALGORA1.app"
   local contents="${app_root}/Contents"
   local macos_dir="${contents}/MacOS"
   local res_dir="${contents}/Resources"
@@ -488,7 +489,7 @@ EOF
   <key>CFBundleIconFile</key><string>algora1</string>
   <key>CFBundleIdentifier</key><string>com.algora1.launcher</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-  <key>CFBundleName</key><string>algora1</string>
+  <key>CFBundleName</key><string>ALGORA1</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundleVersion</key><string>1</string>
@@ -508,7 +509,7 @@ EOF
   printf "generated-by=algora1-installer\n" > "${res_dir}/.algora1_generated" || true
 
   ui_ok "macOS app created: ${app_root}"
-  ui_info "Tip: drag 'algora1.app' into your Dock. First run may require right-click → Open."
+  ui_info "Tip: drag 'ALGORA1' into your Dock. First run may require right-click → Open."
 
   open -R "${app_root}" >/dev/null 2>&1 || true
 }
@@ -1236,7 +1237,7 @@ sudo tee /etc/update-motd.d/00-algora1-header >/dev/null <<'EOT'
 #!/bin/sh
 
 printf "\n"
-printf "\033[1mWelcome to algora1\033[0m\n\n"
+printf "\033[1mWelcome to ALGORA1\033[0m\n\n"
 printf "Company Site :  https://www.algora1.com\n\n"
 
 printf "\033[1mControl Panel\033[0m\n"
@@ -1359,9 +1360,9 @@ run_engine_prompt_if_safe() {
 
 if has_gum; then
   gum style --border rounded --padding "1 2" --border-foreground 39 \
-    "$(printf "algora1 session\nOne-session mode enabled")"
+    "$(printf "ALGORA1 session\nOne-session mode enabled")"
 else
-  echo "algora1 session (one-session mode enabled)"
+  echo "ALGORA1 session (one-session mode enabled)"
 fi
 
 run_engine_prompt_if_safe || true
@@ -1566,9 +1567,9 @@ draw_header_once() {
   clear || true
   if has_gum; then
     gum style --border rounded --padding "1 2" --border-foreground 39 \
-      "$(printf "🎿 algora1 — Control Panel\nThank you for your support.")"
+      "$(printf "ALGORA1 — Control Panel\nWelcome to ALGORA1's Terminal UI.")"
   else
-    echo "algora1 — Control Panel (one-session mode enabled)"
+    echo "ALGORA1 — Control Panel (one-session mode enabled)"
   fi
   echo ""
 }
@@ -1578,8 +1579,8 @@ running_sessions_menu() {
   cnt="$(session_count)"
 
   if [ "$cnt" -gt 1 ]; then
-    warn "Multiple screen sessions detected (${cnt}). One-session mode requires deleting extras."
-    if confirm "Delete ALL sessions now? (recommended)"; then
+    warn "Multiple screen sessions detected (${cnt}). One-session maxiumum per account deleting extras."
+    if confirm "Delete all sessions now? (recommended)"; then
       delete_all_sessions
       ok "All sessions deleted."
     fi
