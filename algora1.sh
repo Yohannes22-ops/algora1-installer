@@ -18,10 +18,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_33e2f29dc1f746959a7b2866655c00d7.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_355a341165eb4ab79afdaba4af27d66b.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_08e1268e0ada410fbc70703560d13bc2.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_fd8bcb9d8172448cb7411726dbcffa76.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_b786e73f12a842feb6b1a101113053d8.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_5e6af5a650584717a68cf2fa5841ce18.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_317356e72ee242cc918d2af613d3e532.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_1489c94e1c6a4c128d4acef7ac6e2770.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -1665,7 +1665,9 @@ live_status_menu() {
       echo ""
       return 0
     fi
-    clear || true
+
+    printf '\033[H\033[2J'
+
     cat "$file" 2>/dev/null || echo "(no status yet)"
     sleep 1 || true
   done
@@ -1761,7 +1763,13 @@ ssh_into_instance_menu() {
   local ip="$1"
   local key_path="${HOME}/.ssh/${KEY_NAME}"
   ui_info "Connecting to VM (control panel)…"
-  exec ssh -tt -o LogLevel=ERROR -o StrictHostKeyChecking=accept-new -i "${key_path}" \
+  exec ssh -tt \
+    -o LogLevel=ERROR \
+    -o StrictHostKeyChecking=accept-new \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=3 \
+    -o TCPKeepAlive=yes \
+    -i "${key_path}" \
     "${REMOTE_USER}@${ip}" "bash -lc 'algora1'"
 }
 
@@ -1770,7 +1778,13 @@ ssh_into_instance() {
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
   ui_info "Connecting to VM…"
-  exec ssh -tt -o LogLevel=ERROR -o StrictHostKeyChecking=accept-new -i "${key_path}" \
+  exec ssh -tt \
+    -o LogLevel=ERROR \
+    -o StrictHostKeyChecking=accept-new \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=3 \
+    -o TCPKeepAlive=yes \
+    -i "${key_path}" \
     "${REMOTE_USER}@${ip}"
 }
 
