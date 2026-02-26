@@ -1244,7 +1244,7 @@ printf "\033[1mControl Panel\033[0m\n"
 printf "Run: \033[38;5;39malgora1\033[0m\n\n"
 
 printf "\033[1mMain Menu\033[0m\n"
-printf "  • Running sessions\n"
+printf "  • Running session\n"
 printf "  • Live Status\n"
 printf "  • Exit\n\n"
 
@@ -1589,7 +1589,7 @@ running_sessions_menu() {
 
   if [ "$cnt" = "0" ]; then
     local action
-    action="$(choose "Running sessions" "Start new session" "Back")"
+    action="$(choose "Running session" "Start new session" "Back")"
     [ "$action" = "Start new session" ] || return 0
 
     # Enforce no session exists
@@ -1615,7 +1615,7 @@ running_sessions_menu() {
     local s
     s="$(get_only_session)"
     local action
-    action="$(choose "Running sessions" "Connect" "Delete session" "Back")"
+    action="$(choose "Running session" "Connect" "Delete session" "Back")"
 
     case "$action" in
       "Connect")
@@ -1727,14 +1727,14 @@ main_loop() {
   while true; do
     local selection
     selection="$(choose "Select an option" \
-      "Running sessions" \
+      "Running session" \
       "Live Status" \
       "Troubleshoot" \
       "Clear logs" \
       "Exit")"
 
     case "$selection" in
-      "Running sessions") running_sessions_menu ;;
+      "Running session") running_sessions_menu ;;
       "Live Status") live_status_menu ;;
       "Troubleshoot") troubleshoot_menu ;;
       "Clear logs") clear_logs_menu ;;
