@@ -1343,6 +1343,9 @@ run_engine_prompt_if_safe() {
   ok "Starting ${engine}…"
   chmod +x "./${engine}" >/dev/null 2>&1 || true
 
+  # Hard clear so engine output starts clean (no UI remnants)
+  printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+
   [ -f "$HOME/.profile" ] && source "$HOME/.profile" || true
   [ -f "$HOME/.bashrc" ]  && source "$HOME/.bashrc"  || true
 
@@ -1358,12 +1361,15 @@ run_engine_prompt_if_safe() {
   "./${engine}"
 }
 
+# Clean screen so session UI never mixes with prior content
+printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+
 if has_gum; then
-  gum style --border rounded --padding "1 2" --border-foreground 39 \
-    "$(printf "ALGORA1 session\nOne-session mode enabled")"
+  gum style --bold --foreground 39 "ALGORA1 session — one-session mode" >&2
 else
-  echo "ALGORA1 session (one-session mode enabled)"
+  echo "ALGORA1 session — one-session mode"
 fi
+echo ""
 
 run_engine_prompt_if_safe || true
 
@@ -1619,6 +1625,12 @@ running_sessions_menu() {
 
     case "$action" in
       "Connect")
+        # Clear the control panel screen so you don't see prior menu content
+        printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+
+        # Clear the *screen session* buffer right before attach
+        screen -S "$s" -p 0 -X stuff $'printf "\\033[H\\033[2J\\033[3J" 2>/dev/null || true\n' >/dev/null 2>&1 || true
+
         screen -r "$s" || true
         return 0
         ;;
