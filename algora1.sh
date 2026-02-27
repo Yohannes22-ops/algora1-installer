@@ -18,10 +18,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_b786e73f12a842feb6b1a101113053d8.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_5e6af5a650584717a68cf2fa5841ce18.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_317356e72ee242cc918d2af613d3e532.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_1489c94e1c6a4c128d4acef7ac6e2770.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_2f10fa6fdc164e1c9cfa672f624368c3.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_fef37d882aa14992b337a49f8770ed50.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_77d78694686843afa33e2f0ce3a0ca87.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_7a7ff90d3dfd445c8631fe5ad8376a3c.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -1362,27 +1362,14 @@ run_engine_prompt_if_safe() {
   fi
 
   "./${engine}"
-
-  [ -f "$HOME/.profile" ] && source "$HOME/.profile" || true
-  [ -f "$HOME/.bashrc" ]  && source "$HOME/.bashrc"  || true
-
-  missing=()
-  [ -n "${ALPACA_PAPER_API_KEY:-}" ] || missing+=("ALPACA_PAPER_API_KEY")
-  [ -n "${ALPACA_PAPER_SECRET_KEY:-}" ] || missing+=("ALPACA_PAPER_SECRET_KEY")
-  if [ "${#missing[@]}" -gt 0 ]; then
-    warn "Missing keys in this session: ${missing[*]}"
-    warn "Fix: ensure keys exist in ~/.profile or ~/.bashrc for user $(whoami)"
-    return 0
-  fi
-
-  "./${engine}"
 }
 
 # Clean screen so session UI never mixes with prior content
 printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 
 if has_gum; then
-  gum style --bold --foreground 39 "ALGORA1 session — one-session mode" >&2
+  gum style --border rounded --padding "1 2" --border-foreground 39 \
+    "$(printf "ALGORA1 session — one-session mode\nSelect engine")" >&2
 else
   echo "ALGORA1 session — one-session mode"
 fi
@@ -1425,6 +1412,26 @@ choose() {
     printf "Select [1-%d]: " "$#"
     local n; read -r n; n="${n:-1}"
     echo "${@:n:1}"
+  fi
+}
+
+secret() {
+  local prompt="$1"
+  if has_gum; then
+    gum input --password \
+      --prompt "$prompt " \
+      --prompt.foreground 39 \
+      --cursor.foreground 39 \
+      --placeholder "" \
+      1>&2
+  else
+    printf "%s " "$prompt" >&2
+    stty -echo || true
+    local v=""
+    read -r v || true
+    stty echo || true
+    printf "\n" >&2
+    echo "$v"
   fi
 }
 
