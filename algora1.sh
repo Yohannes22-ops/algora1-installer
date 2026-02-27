@@ -1343,6 +1343,9 @@ run_engine_prompt_if_safe() {
   ok "Starting ${engine}…"
   chmod +x "./${engine}" >/dev/null 2>&1 || true
 
+  # Hard clear so engine output starts clean (no UI remnants)
+  printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+
   [ -f "$HOME/.profile" ] && source "$HOME/.profile" || true
   [ -f "$HOME/.bashrc" ]  && source "$HOME/.bashrc"  || true
 
@@ -1358,12 +1361,15 @@ run_engine_prompt_if_safe() {
   "./${engine}"
 }
 
+# Clean screen so session UI never mixes with prior content
+printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+
 if has_gum; then
-  gum style --border rounded --padding "1 2" --border-foreground 39 \
-    "$(printf "ALGORA1 session\nOne-session mode enabled")"
+  gum style --bold --foreground 39 "ALGORA1 session — one-session mode" >&2
 else
-  echo "ALGORA1 session (one-session mode enabled)"
+  echo "ALGORA1 session — one-session mode"
 fi
+echo ""
 
 run_engine_prompt_if_safe || true
 
@@ -1619,7 +1625,14 @@ running_sessions_menu() {
 
     case "$action" in
       "Connect")
+        # Clear the control panel screen before attaching
+        printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+
+        # Attach to the existing session (do NOT inject clears into the running engine)
         screen -r "$s" || true
+
+        # After you detach/return, clear the screen and let main_loop redraw the header
+        printf '\033[H\033[2J\033[3J' 2>/dev/null || true
         return 0
         ;;
       "Delete session")
@@ -1722,9 +1735,9 @@ troubleshoot_menu() {
 }
 
 main_loop() {
-  draw_header_once
-
   while true; do
+    draw_header_once
+
     local selection
     selection="$(choose "Select an option" \
       "Running session" \
