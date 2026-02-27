@@ -1403,6 +1403,11 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 has_gum() { command -v gum >/dev/null 2>&1; }
 
+hard_clear() {
+  # Clear screen + scrollback so the header box always starts at the top
+  printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+}
+
 choose() {
   local title="$1"; shift
   if has_gum; then
