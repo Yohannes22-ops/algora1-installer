@@ -1269,6 +1269,10 @@ set -euo pipefail
 
 has_gum() { command -v gum >/dev/null 2>&1; }
 
+hard_clear() {
+  printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+}
+
 install_gum_if_needed() {
   has_gum && return 0
 
@@ -1340,11 +1344,24 @@ run_engine_prompt_if_safe() {
   engine="$(choose "Select engine" "${ENGINE_NAMES[@]}")"
   [ -n "$engine" ] || return 0
 
-  ok "Starting ${engine}…"
+  # Hard clear so NO prompts/typed input remain visible before engine output
+  printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+
   chmod +x "./${engine}" >/dev/null 2>&1 || true
 
-  # Hard clear so engine output starts clean (no UI remnants)
-  printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+  [ -f "$HOME/.profile" ] && source "$HOME/.profile" || true
+  [ -f "$HOME/.bashrc" ]  && source "$HOME/.bashrc"  || true
+
+  missing=()
+  [ -n "${ALPACA_PAPER_API_KEY:-}" ] || missing+=("ALPACA_PAPER_API_KEY")
+  [ -n "${ALPACA_PAPER_SECRET_KEY:-}" ] || missing+=("ALPACA_PAPER_SECRET_KEY")
+  if [ "${#missing[@]}" -gt 0 ]; then
+    warn "Missing keys in this session: ${missing[*]}"
+    warn "Fix: ensure keys exist in ~/.profile or ~/.bashrc for user $(whoami)"
+    return 0
+  fi
+
+  "./${engine}"
 
   [ -f "$HOME/.profile" ] && source "$HOME/.profile" || true
   [ -f "$HOME/.bashrc" ]  && source "$HOME/.bashrc"  || true
@@ -1570,7 +1587,7 @@ detect_running_engine_best_effort() {
 }
 
 draw_header_once() {
-  clear || true
+  hard_clear
   if has_gum; then
     gum style --border rounded --padding "1 2" --border-foreground 39 \
       "$(printf "ALGORA1 — Control Panel\nWelcome to ALGORA1's Terminal UI.")"
@@ -1613,9 +1630,15 @@ running_sessions_menu() {
     [[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || { warn "Invalid name. Use letters/numbers/_/- only."; return 0; }
 
     create_new_session "$name"
-    ok "Session created: $name"
-    ok "Connecting…"
+
+    # Remove the input prompt + typed session name from the visible terminal
+    hard_clear
+
+    # Attach to the new session
     screen -r "$name" || true
+
+    # When user detaches back to control panel, hard-clear so box redraws cleanly
+    hard_clear
     return 0
   else
     local s
@@ -1625,14 +1648,9 @@ running_sessions_menu() {
 
     case "$action" in
       "Connect")
-        # Clear the control panel screen before attaching
-        printf '\033[H\033[2J\033[3J' 2>/dev/null || true
-
-        # Attach to the existing session (do NOT inject clears into the running engine)
+        hard_clear
         screen -r "$s" || true
-
-        # After you detach/return, clear the screen and let main_loop redraw the header
-        printf '\033[H\033[2J\033[3J' 2>/dev/null || true
+        hard_clear
         return 0
         ;;
       "Delete session")
@@ -1679,7 +1697,7 @@ live_status_menu() {
       return 0
     fi
 
-    printf '\033[H\033[2J'
+    hard_clear
 
     cat "$file" 2>/dev/null || echo "(no status yet)"
     sleep 1 || true
