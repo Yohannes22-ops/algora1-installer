@@ -1625,13 +1625,14 @@ running_sessions_menu() {
 
     case "$action" in
       "Connect")
-        # Clear the control panel screen so you don't see prior menu content
+        # Clear the control panel screen before attaching
         printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 
-        # Clear the *screen session* buffer right before attach
-        screen -S "$s" -p 0 -X stuff $'printf "\\033[H\\033[2J\\033[3J" 2>/dev/null || true\n' >/dev/null 2>&1 || true
-
+        # Attach to the existing session (do NOT inject clears into the running engine)
         screen -r "$s" || true
+
+        # After you detach/return, clear the screen and let main_loop redraw the header
+        printf '\033[H\033[2J\033[3J' 2>/dev/null || true
         return 0
         ;;
       "Delete session")
@@ -1734,9 +1735,9 @@ troubleshoot_menu() {
 }
 
 main_loop() {
-  draw_header_once
-
   while true; do
+    draw_header_once
+
     local selection
     selection="$(choose "Select an option" \
       "Running session" \
