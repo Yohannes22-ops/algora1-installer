@@ -20,10 +20,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_2c65aad7116d44bdac88d1583034c49b.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_33b96aaa07f54285b71f2fd3db489606.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_0130b58c848145f092712c50439f44d2.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_df65cf4c16ab4e03b12e4d010460bcd7.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_8fb889234c184c8ea212ebf6325776ab.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_4f9f1b9c9db641f7b463b217a4aad1d2.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_eaba9180a74c4904893bfede22457e4b.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_7a8e4a5deb7c404b9ec0600f19d8bd2f.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -1365,6 +1365,7 @@ run_engine_prompt_if_safe() {
     return 0
   fi
 
+  cd "$HOME" >/dev/null 2>&1 || true
   "./${engine}"
 }
 
@@ -1478,7 +1479,6 @@ info() { printf "INFO %s\n" "$*"; }
 warn() { printf "WARN %s\n" "$*" >&2; }
 
 list_sessions_raw() {
-  # screen -ls returns exit code 1 when there are no sockets; don't let set -e kill the menu
   command -v screen >/dev/null 2>&1 || return 0
   screen -ls 2>/dev/null \
     | sed -n 's/^[[:space:]]*\([0-9]\+\.[^[:space:]]\+\)[[:space:]].*$/\1/p' \
@@ -1582,10 +1582,10 @@ clear_logs_menu() {
 
   if [ "$choice" = "Clear all logs" ]; then
     if confirm "Clear all investing logs?"; then
-      : > "bexp_investing.log" 2>/dev/null || true
-      : > "tsla_investing.log" 2>/dev/null || true
-      : > "nvda_investing.log" 2>/dev/null || true
-      : > "pmny_investing.log" 2>/dev/null || true
+      : > "$HOME/bexp_investing.log" 2>/dev/null || true
+      : > "$HOME/tsla_investing.log" 2>/dev/null || true
+      : > "$HOME/nvda_investing.log" 2>/dev/null || true
+      : > "$HOME/pmny_investing.log" 2>/dev/null || true
       ok "Logs cleared."
     fi
     return 0
