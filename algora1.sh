@@ -1670,7 +1670,7 @@ running_sessions_menu() {
     local s
     s="$(get_only_session)"
     local action
-    action="$(choose "Running session" "Connect" "Delete session" "Back")"
+    action="$(choose "Running session" "Connect" "Back")"
 
     case "$action" in
       "Connect")
@@ -1678,12 +1678,6 @@ running_sessions_menu() {
         screen -r "$s" || true
         hard_clear
         return 0
-        ;;
-      "Delete session")
-        if confirm "Delete session '$s'? This will stop any running engine."; then
-          delete_session "$s"
-          ok "Session deleted."
-        fi
         ;;
       *) return 0 ;;
     esac
@@ -1752,7 +1746,7 @@ troubleshoot_menu() {
 
   touch "$logfile" >/dev/null 2>&1 || true
   info "Tailing: $logfile (Ctrl+C to return)"
-  info "Note: stop the engine to fully clear logs."
+  info "Stop the engine to fully clear logs"
 
   # Ctrl+C should return to menu (not exit SSH)
   local stop=0
