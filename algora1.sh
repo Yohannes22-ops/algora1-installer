@@ -18,10 +18,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_2f10fa6fdc164e1c9cfa672f624368c3.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_fef37d882aa14992b337a49f8770ed50.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_77d78694686843afa33e2f0ce3a0ca87.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_7a7ff90d3dfd445c8631fe5ad8376a3c.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_3570bd57cb0a4463bb5e6ac682b7ca0a.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_308365547f5b4bc1b8568dfe236f5dfc.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_bc2584aac7b64d60a6e29dbe6d98de65.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_e47cdcc4e063411583f1b7ce288838b5.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -61,7 +61,7 @@ ui_header() {
   if ui_has_gum; then
     gum style --border rounded --padding "1 2" --margin "0 0 1 0" \
       --border-foreground ${C_ACCENT} \
-      "$(printf "ALGORA1 Software\nAutomated investment engine deployment.\nmodern Terminal UI")" >&2
+      "$(printf "ALGORA1 Software\nAutomated investment engine deployment.\nModern Terminal UI")" >&2
   else
     log "ALGORA1 Software"
     log "Automated investment engine deployment."
@@ -1369,9 +1369,9 @@ printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 
 if has_gum; then
   gum style --border rounded --padding "1 2" --border-foreground 39 \
-    "$(printf "ALGORA1 session — one-session mode\nSelect engine")" >&2
+    "$(printf "ALGORA1 session — One-session mode\nSelect engine")" >&2
 else
-  echo "ALGORA1 session — one-session mode"
+  echo "ALGORA1 session — One-session mode"
 fi
 echo ""
 
