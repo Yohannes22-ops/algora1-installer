@@ -1449,13 +1449,16 @@ run_engine_prompt_if_safe() {
 
   local action
   action="$(choose "Run investment engine?" "Run investment engine" "Back")"
-  [ "$action" = "Run investment engine" ] || return 0
+
+  # IMPORTANT: Back should exit the screen session so you return to the Home menu
+  if [ "$action" != "Run investment engine" ]; then
+    return 1
+  fi
 
   local engine
   engine="$(choose "Select engine" "${ENGINE_NAMES[@]}")"
-  [ -n "$engine" ] || return 0
+  [ -n "$engine" ] || return 1
 
-  # Hard clear so NO prompts/typed input remain visible before engine output
   printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 
   chmod +x "./${engine}" >/dev/null 2>&1 || true
@@ -1473,6 +1476,7 @@ run_engine_prompt_if_safe() {
   fi
 
   "./${engine}"
+  return 0
 }
 
 # Clean screen so session UI never mixes with prior content
@@ -1486,9 +1490,14 @@ else
 fi
 echo ""
 
-run_engine_prompt_if_safe || true
+if run_engine_prompt_if_safe; then
+  # Engine ran (or we intentionally stayed), keep an interactive shell
+  exec bash -l
+else
+  # User hit Back → end this screen session → returns to ALGORA1 Home menu
+  exit 0
+fi
 
-exec bash -l
 SESSION
 
 sudo chmod +x /usr/local/bin/algora1-session
