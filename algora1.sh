@@ -1515,6 +1515,13 @@ hard_clear() {
   printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 }
 
+session_pretty_name() {
+  # input: "2758.investing" -> output: "investing"
+  local raw="${1:-}"
+  raw="${raw##*/}"
+  echo "${raw#*.}"
+}
+
 cursor_hide() { printf '\033[?25l' 2>/dev/null || true; }
 cursor_show() { printf '\033[?25h' 2>/dev/null || true; }
 
@@ -1805,7 +1812,8 @@ running_sessions_menu() {
   else
     local s_raw s_name action
     s_raw="$(get_only_session)"
-    s_name="$(session_pretty_name "$s_raw")"
+    s_name="$s_raw"
+    command -v session_pretty_name >/dev/null 2>&1 && s_name="$(session_pretty_name "$s_raw")"
 
     action="$(choose "Running session" "Connect" "Delete session" "Back")"
 
