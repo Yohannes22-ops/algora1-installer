@@ -1747,7 +1747,6 @@ troubleshoot_menu() { {
 
   touch "$logfile" >/dev/null 2>&1 || true
   info "Tailing: $logfile (Ctrl+C to return)"
-  info "Stop the engine to fully clear logs"
 
   # Ctrl+C should return to menu (not exit SSH)
   local stop=0
