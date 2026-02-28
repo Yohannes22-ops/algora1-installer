@@ -1466,8 +1466,6 @@ confirm() {
       --prompt.foreground 39 \
       --selected.foreground 39 \
       --selected.background 0 \
-      --unselected.foreground 245 \
-      --unselected.background 0 \
       "$prompt"
   else
     printf "%s [y/N]: " "$prompt"
