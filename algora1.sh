@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$HOME" >/dev/null 2>&1 || true
-
 export CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK=1
 export CLOUDSDK_CORE_DISABLE_USAGE_REPORTING=1
 
@@ -20,10 +18,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_99929c7ade0e4ca58f08b36df71b114b.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_82983f1c73ce419cbe764bb51a15f8a2.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_911bb61076754adcbeee961efac3f3a6.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_b9b28113b9e948cd9b39ea322bc0c4e4.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_2f10fa6fdc164e1c9cfa672f624368c3.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_fef37d882aa14992b337a49f8770ed50.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_77d78694686843afa33e2f0ce3a0ca87.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_7a7ff90d3dfd445c8631fe5ad8376a3c.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -63,7 +61,7 @@ ui_header() {
   if ui_has_gum; then
     gum style --border rounded --padding "1 2" --margin "0 0 1 0" \
       --border-foreground ${C_ACCENT} \
-      "$(printf "ALGORA1 Software\nAutomated investment engine deployment.\nModern Terminal UI")" >&2
+      "$(printf "ALGORA1 Software\nAutomated investment engine deployment.\nmodern Terminal UI")" >&2
   else
     log "ALGORA1 Software"
     log "Automated investment engine deployment."
@@ -140,7 +138,6 @@ ui_choose() {
       --item.foreground ${C_ACCENT} \
       --selected.foreground ${C_ACCENT} \
       --cursor.foreground ${C_CURSOR} \
-      --cursor.background "" \
       "$@"
   else
     printf "%s\n" "$title" >&2
@@ -1231,7 +1228,7 @@ customize_motd_on_vm() {
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
   ui_spin "Customizing VM login banner…" ssh -o LogLevel=ERROR -o StrictHostKeyChecking=accept-new -i "${key_path}" \
-    "${REMOTE_USER}@${ip}" "bash -s" <<'REMOTE_SCRIPT'
+    "${REMOTE_USER}@${ip}" "bash -s" <<'EOF'
 set -euo pipefail
 
 sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
@@ -1255,7 +1252,7 @@ printf "\033[1mOne-session mode:\033[0m only one screen session allowed at a tim
 EOT
 
 sudo chmod +x /etc/update-motd.d/00-algora1-header
-REMOTE_SCRIPT
+EOF
 
   ui_ok "Login banner installed"
 }
@@ -1267,7 +1264,7 @@ install_control_panel_on_vm() {
   ui_step "[11/11] Installing Control Panel"
 
   ui_spin "Installing control panel scripts on VM…" ssh -o LogLevel=ERROR -o StrictHostKeyChecking=accept-new -i "${key_path}" \
-    "${REMOTE_USER}@${ip}" "bash -s" <<'REMOTE_CP'
+    "${REMOTE_USER}@${ip}" "bash -s" <<'EOF'
 set -euo pipefail
 
 has_gum() { command -v gum >/dev/null 2>&1; }
@@ -1311,7 +1308,6 @@ choose() {
       --item.foreground 39 \
       --selected.foreground 39 \
       --cursor.foreground 33 \
-      --cursor.background "" \
       "$@"
   else
     echo "$title"
@@ -1365,7 +1361,6 @@ run_engine_prompt_if_safe() {
     return 0
   fi
 
-  cd "$HOME" >/dev/null 2>&1 || true
   "./${engine}"
 }
 
@@ -1400,11 +1395,6 @@ hard_clear() {
   printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 }
 
-cursor_hide() { printf '\033[?25l' 2>/dev/null || true; }
-cursor_show() { printf '\033[?25h' 2>/dev/null || true; }
-# Always restore cursor on exit (avoid "shadow block" lingering)
-trap 'cursor_show' EXIT
-
 choose() {
   local title="$1"; shift
   if has_gum; then
@@ -1414,7 +1404,6 @@ choose() {
       --item.foreground 39 \
       --selected.foreground 39 \
       --cursor.foreground 33 \
-      --cursor.background "" \
       "$@"
   else
     echo "$title"
@@ -1470,7 +1459,7 @@ confirm() {
     gum confirm \
       --prompt.foreground 39 \
       --selected.foreground 39 \
-      --selected.background "" \
+      --unselected.foreground 245 \
       "$prompt"
   else
     printf "%s [y/N]: " "$prompt"
@@ -1484,10 +1473,11 @@ info() { printf "INFO %s\n" "$*"; }
 warn() { printf "WARN %s\n" "$*" >&2; }
 
 list_sessions_raw() {
+  # screen -ls returns exit code 1 when there are no sockets; don't let set -e kill the menu
   command -v screen >/dev/null 2>&1 || return 0
-  screen -ls 2>/dev/null | awk '
-    $1 ~ /^[0-9]+\./ { gsub(/\r/,"",$1); print $1 }
-  ' || true
+  screen -ls 2>/dev/null \
+    | sed -n 's/^[[:space:]]*\([0-9]\+\.[^[:space:]]\+\)[[:space:]].*$/\1/p' \
+    || true
 }
 
 session_count() {
@@ -1506,21 +1496,14 @@ delete_session() {
   local s="$1"
   [ -n "$s" ] || return 0
 
-  local name="${s#*.}"
+  screen -S "$s" -X quit >/dev/null 2>&1 || true
 
-  # try both identifiers
-  screen -S "$s"    -X quit >/dev/null 2>&1 || true
-  screen -S "$name" -X quit >/dev/null 2>&1 || true
-
-  # wait for it to disappear
-  for _ in {1..40}; do
+  for _ in {1..20}; do
     if ! list_sessions_raw | grep -Fxq "$s"; then
       return 0
     fi
     sleep 0.1 || true
   done
-
-  warn "Could not delete session '$s' (it may be attached/running under a different user)."
   return 0
 }
 
@@ -1572,18 +1555,47 @@ live_status_for_engine() {
   esac
 }
 
+clear_logs_menu() {
+  local choice
+  choice="$(choose "Clear logs" \
+    "bexp_investing.log" \
+    "tsla_investing.log" \
+    "nvda_investing.log" \
+    "pmny_investing.log" \
+    "Clear all logs" \
+    "Back")"
 
-detect_running_engines_best_effort() {
-  # Returns space-separated engine codes in priority order
-  local out=()
-  local e
-  for e in "${ENGINE_NAMES[@]}"; do
-    if pgrep -af "(^|/)$e( |$)" >/dev/null 2>&1; then
-      out+=("$e")
+  [ "$choice" = "Back" ] && return 0
+
+  if [ "$choice" = "Clear all logs" ]; then
+    if confirm "Clear all investing logs?"; then
+      : > "bexp_investing.log" 2>/dev/null || true
+      : > "tsla_investing.log" 2>/dev/null || true
+      : > "nvda_investing.log" 2>/dev/null || true
+      : > "pmny_investing.log" 2>/dev/null || true
+      ok "Logs cleared."
     fi
-  done
-  printf "%s
-" "${out[*]}"
+    return 0
+  fi
+
+  if confirm "Clear '$choice'?"; then
+    : > "$choice" 2>/dev/null || true
+    ok "Cleared: $choice"
+  fi
+
+  return 0
+}
+
+detect_running_engine_best_effort() {
+  local line
+  line="$(pgrep -af '(BEXP|PMNY|TSLA|NVDA)' 2>/dev/null | head -n 1 || true)"
+  case "$line" in
+    *BEXP*) echo "BEXP" ;;
+    *TSLA*) echo "TSLA" ;;
+    *NVDA*) echo "NVDA" ;;
+    *PMNY*) echo "PMNY" ;;
+    *) echo "" ;;
+  esac
 }
 
 draw_header_once() {
@@ -1602,7 +1614,7 @@ running_sessions_menu() {
   cnt="$(session_count)"
 
   if [ "$cnt" -gt 1 ]; then
-    warn "Multiple screen sessions detected (${cnt}). One-session maximum per account; deleting extras."
+    warn "Multiple screen sessions detected (${cnt}). One-session maxiumum per account deleting extras."
     if confirm "Delete all sessions now? (recommended)"; then
       delete_all_sessions
       ok "All sessions deleted."
@@ -1635,9 +1647,7 @@ running_sessions_menu() {
     hard_clear
 
     # Attach to the new session
-    cursor_hide
     screen -r "$name" || true
-    cursor_show
 
     # When user detaches back to control panel, hard-clear so box redraws cleanly
     hard_clear
@@ -1646,16 +1656,20 @@ running_sessions_menu() {
     local s
     s="$(get_only_session)"
     local action
-    action="$(choose "Running session" "Connect" "Back")"
+    action="$(choose "Running session" "Connect" "Delete session" "Back")"
 
     case "$action" in
       "Connect")
         hard_clear
-        cursor_hide
         screen -r "$s" || true
-        cursor_show
         hard_clear
         return 0
+        ;;
+      "Delete session")
+        if confirm "Delete session '$s'? This will stop any running engine."; then
+          delete_session "$s"
+          ok "Session deleted."
+        fi
         ;;
       *) return 0 ;;
     esac
@@ -1663,7 +1677,27 @@ running_sessions_menu() {
 }
 
 live_status_menu() {
-  cd "$HOME" || return 0
+  local eng
+  eng="$(detect_running_engine_best_effort || true)"
+
+  local file=""
+  if [ -n "$eng" ]; then
+    file="$(live_status_for_engine "$eng")"
+    info "Engine detected: $eng"
+  else
+    local choice
+    choice="$(choose "Live Status" \
+      "bexp_live_status.txt" \
+      "tsla_live_status.txt" \
+      "nvda_live_status.txt" \
+      "pmny_live_status.txt" \
+      "Back")"
+    [ "$choice" = "Back" ] && return 0
+    file="$choice"
+  fi
+
+  touch "$file" >/dev/null 2>&1 || true
+  info "Viewing: $file (Ctrl+C to return)"
 
   local stop=0
   trap 'stop=1' INT
@@ -1671,53 +1705,13 @@ live_status_menu() {
   while true; do
     if [ "$stop" -eq 1 ]; then
       trap - INT
-      cursor_show
       echo ""
       return 0
     fi
 
     hard_clear
-    cursor_hide
 
-    local engines
-    engines="$(detect_running_engines_best_effort || true)"
-
-    \
-if [ -z "${engines// }" ]; then
-  # No active engines — show minimal message
-  if has_gum; then
-    gum style --border rounded --padding "2 4" --margin "2 0 0 0" \
-      --border-foreground 39 --foreground 39 --align center \
-      "NO ACTIVE ENGINE RUNNING"
-  else
-    echo ""
-    echo "NO ACTIVE ENGINE RUNNING"
-    echo ""
-  fi
-  sleep 1 || true
-  continue
-fi
-
-    # One or more engines active — show their live status blocks stacked.
-    local e file
-    for e in $engines; do
-      file="$(live_status_for_engine "$e")"
-      printf "\n"
-      if has_gum; then
-        gum style --foreground 39 --bold "LIVE STATUS — ${e}" || true
-      else
-        echo "LIVE STATUS — ${e}"
-      fi
-      echo ""
-      if [ -f "$HOME/$file" ]; then
-        cat "$HOME/$file" 2>/dev/null || echo "(no status yet)"
-      else
-        echo "(no status yet)"
-      fi
-      echo ""
-    done
-
-    # small refresh interval
+    cat "$file" 2>/dev/null || echo "(no status yet)"
     sleep 1 || true
   done
 }
@@ -1744,7 +1738,6 @@ troubleshoot_menu() {
 
   touch "$logfile" >/dev/null 2>&1 || true
   info "Tailing: $logfile (Ctrl+C to return)"
-  info "Stop the engine to fully clear logs"
 
   # Ctrl+C should return to menu (not exit SSH)
   local stop=0
@@ -1780,12 +1773,14 @@ main_loop() {
       "Running session" \
       "Live Status" \
       "Troubleshoot" \
+      "Clear logs" \
       "Exit")"
 
     case "$selection" in
       "Running session") running_sessions_menu ;;
       "Live Status") live_status_menu ;;
       "Troubleshoot") troubleshoot_menu ;;
+      "Clear logs") clear_logs_menu ;;
       "Exit") exit 0 ;;
       *) exit 0 ;;
     esac
@@ -1804,57 +1799,7 @@ if ! command -v screen >/dev/null 2>&1; then
   fi
 fi
 
-# ---- timezone + midnight log truncation (systemd timer) ----
-sudo timedatectl set-timezone America/New_York >/dev/null 2>&1 || true
-
-ME="$(whoami)"
-
-sudo tee /usr/local/bin/algora1-truncate-logs >/dev/null <<'TRUNC'
-#!/usr/bin/env bash
-set -euo pipefail
-
-USER_NAME="${1:-}"
-if [ -z "$USER_NAME" ]; then
-  USER_NAME="$(whoami)"
-fi
-
-HOME_DIR="$(getent passwd "$USER_NAME" | cut -d: -f6 || true)"
-[ -n "$HOME_DIR" ] || HOME_DIR="$HOME"
-
-files=( "bexp_investing.log" "tsla_investing.log" "nvda_investing.log" "pmny_investing.log" )
-for f in "${files[@]}"; do
-  : > "${HOME_DIR}/${f}" 2>/dev/null || true
-done
-TRUNC
-sudo chmod +x /usr/local/bin/algora1-truncate-logs
-
-sudo tee /etc/systemd/system/algora1-truncate-logs.service >/dev/null <<EOF
-[Unit]
-Description=ALGORA1 truncate investing logs (daily)
-
-[Service]
-Type=oneshot
-User=${ME}
-ExecStart=/usr/local/bin/algora1-truncate-logs ${ME}
 EOF
-
-sudo tee /etc/systemd/system/algora1-truncate-logs.timer >/dev/null <<'EOF'
-[Unit]
-Description=Run ALGORA1 log truncation daily at midnight
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-
-sudo systemctl daemon-reload >/dev/null 2>&1 || true
-sudo systemctl enable --now algora1-truncate-logs.timer >/dev/null 2>&1 || true
-
-
-REMOTE_CP
 }
 
 ssh_into_instance_menu() {
