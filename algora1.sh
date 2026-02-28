@@ -137,9 +137,8 @@ ui_choose() {
       --header.foreground ${C_ACCENT} \
       --item.foreground ${C_ACCENT} \
       --selected.foreground ${C_ACCENT} \
-      --selected.background 0 \
       --cursor.foreground ${C_CURSOR} \
-      --cursor.background 0 \
+      --cursor.background "" \
       "$@"
   else
     printf "%s\n" "$title" >&2
@@ -1309,9 +1308,8 @@ choose() {
       --header.foreground 39 \
       --item.foreground 39 \
       --selected.foreground 39 \
-      --selected.background 0 \
       --cursor.foreground 33 \
-      --cursor.background 0 \
+      --cursor.background "" \
       "$@"
   else
     echo "$title"
@@ -1407,9 +1405,8 @@ choose() {
       --header.foreground 39 \
       --item.foreground 39 \
       --selected.foreground 39 \
-      --selected.background 0 \
       --cursor.foreground 33 \
-      --cursor.background 0 \
+      --cursor.background "" \
       "$@"
   else
     echo "$title"
@@ -1465,7 +1462,7 @@ confirm() {
     gum confirm \
       --prompt.foreground 39 \
       --selected.foreground 39 \
-      --selected.background 0 \
+      --selected.background "" \
       "$prompt"
   else
     printf "%s [y/N]: " "$prompt"
