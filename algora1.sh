@@ -89,9 +89,9 @@ get_content_length() {
 }
 
 render_bar() {
-  # render_bar percent width  -> prints like: [██████░░░░░░░░░░░░]  32%
+  # render_bar percent width -> e.g. [█████░░░░░░]  42%
   local pct="$1"
-  local width="${2:-36}"
+  local width="${2:-24}"   # keep small for 80x24 terminals
 
   [ "$pct" -lt 0 ] && pct=0
   [ "$pct" -gt 100 ] && pct=100
@@ -100,12 +100,8 @@ render_bar() {
   local empty=$(( width - filled ))
 
   local bar=""
-  if [ "$filled" -gt 0 ]; then
-    bar="$(printf '%0.s█' $(seq 1 "$filled"))"
-  fi
-  if [ "$empty" -gt 0 ]; then
-    bar="${bar}$(printf '%0.s░' $(seq 1 "$empty"))"
-  fi
+  [ "$filled" -gt 0 ] && bar="$(printf '%0.s█' $(seq 1 "$filled"))"
+  [ "$empty"  -gt 0 ] && bar="${bar}$(printf '%0.s░' $(seq 1 "$empty"))"
 
   printf "[%s] %3d%%" "$bar" "$pct"
 }
@@ -128,46 +124,33 @@ download_file_with_progress() {
   curl -fL --retry 3 --retry-delay 1 -o "$out" -sS "$url" &
   local pid=$!
 
-  local last_print_ts=0
-  local width=34
+  local width=24  # bar width fits 80 cols cleanly
 
-  # Print progress to stderr so stdout stays clean
   while kill -0 "$pid" >/dev/null 2>&1; do
-    local now_s
-    now_s="$(date +%s 2>/dev/null || echo 0)"
-
-    # throttle to ~10 fps
-    if [ "$last_print_ts" != "0" ] && [ $((now_s*10)) -eq $((last_print_ts*10)) ]; then
-      sleep 0.1 || true
-      continue
-    fi
-    last_print_ts="$now_s"
-
-    local got
+    local got pct line
     got="$(stat_size_bytes "$out")"
 
     if [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
-      local pct=$(( got * 100 / total ))
-      printf "\r%s %s (%s/%s bytes)" \
-        "$label" "$(render_bar "$pct" "$width")" "$got" "$total" >&2
+      pct=$(( got * 100 / total ))
+      line="${label} $(render_bar "$pct" "$width")"
     else
-      # unknown total size: show a “growing” bar + bytes downloaded
-      local t=$(( (got / 262144) % (width+1) )) # 256KB per tick-ish
+      # unknown size: just animate a growing bar based on bytes
+      local t=$(( (got / 262144) % (width+1) ))  # 256KB steps
       local bar="$(printf '%0.s█' $(seq 1 "$t" 2>/dev/null || true))"
-      local pad=$(( width - t ))
-      [ "$pad" -lt 0 ] && pad=0
+      local pad=$(( width - t )); [ "$pad" -lt 0 ] && pad=0
       bar="${bar}$(printf '%0.s░' $(seq 1 "$pad" 2>/dev/null || true))"
-      printf "\r%s [%s] %s bytes" "$label" "$bar" "$got" >&2
+      line="${label} [${bar}]"
     fi
 
+    # overwrite the SAME line (no stacking)
+    printf "\r\033[K%s" "$line" >&2
     sleep 0.1 || true
   done
 
-  # finish line
   wait "$pid"
   local rc=$?
 
-  # clear the progress line and print a clean newline
+  # clear progress line + newline
   printf "\r\033[K" >&2
   printf "\n" >&2
 
@@ -1543,7 +1526,7 @@ center_box() {
 
   # Gum adds border + padding "1 2"
   # Total box height ~= message lines + 2(padding top/bot) + 2(border) = lines + 4
-  local box_h=$((lines + 4))
+  local box_h=$((lines + 5))
 
   # Vertically center the whole box
   local pad_y=$(( (rows - box_h) / 2 ))
