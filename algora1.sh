@@ -150,9 +150,13 @@ download_file_with_progress() {
   wait "$pid"
   local rc=$?
 
-  # clear progress line + newline
-  printf "\r\033[K" >&2
-  printf "\n" >&2
+  # leave a final completed bar on screen
+  if [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
+    printf "\r\033[K%s %s\n" "$label" "$(render_bar 100 "$width")" >&2
+  else
+    # unknown total: just print "done"
+    printf "\r\033[K%s [done]\n" "$label" >&2
+  fi
 
   [ "$rc" -eq 0 ] || ui_die "Failed to download from ${url}"
   [ -s "$out" ] || ui_die "Download completed but file is empty: $out"
