@@ -61,6 +61,120 @@ set_term_title() {
   printf '\033]0;%s\007' "$1"
 }
 
+# ---------- pretty download progress bar (no ######) ----------
+
+stat_size_bytes() {
+  # cross-platform file size
+  # macOS: stat -f%z ; Linux: stat -c%s
+  if [ -f "$1" ]; then
+    if stat -f%z "$1" >/dev/null 2>&1; then
+      stat -f%z "$1"
+    else
+      stat -c%s "$1" 2>/dev/null || echo 0
+    fi
+  else
+    echo 0
+  fi
+}
+
+get_content_length() {
+  # best-effort Content-Length (bytes); returns empty if unknown
+  local url="$1"
+  local cl=""
+  cl="$(curl -fsSLI "$url" 2>/dev/null | awk -F': ' 'tolower($1)=="content-length"{gsub("\r","",$2); print $2}' | tail -n 1)"
+  case "$cl" in
+    ''|*[!0-9]*) echo "" ;;
+    *) echo "$cl" ;;
+  esac
+}
+
+render_bar() {
+  # render_bar percent width  -> prints like: [██████░░░░░░░░░░░░]  32%
+  local pct="$1"
+  local width="${2:-36}"
+
+  [ "$pct" -lt 0 ] && pct=0
+  [ "$pct" -gt 100 ] && pct=100
+
+  local filled=$(( pct * width / 100 ))
+  local empty=$(( width - filled ))
+
+  local bar=""
+  if [ "$filled" -gt 0 ]; then
+    bar="$(printf '%0.s█' $(seq 1 "$filled"))"
+  fi
+  if [ "$empty" -gt 0 ]; then
+    bar="${bar}$(printf '%0.s░' $(seq 1 "$empty"))"
+  fi
+
+  printf "[%s] %3d%%" "$bar" "$pct"
+}
+
+download_file_with_progress() {
+  # download_file_with_progress "Label" "URL" "OUT_PATH"
+  local label="$1"
+  local url="$2"
+  local out="$3"
+
+  need_cmd curl || ui_die "curl is required but not found."
+
+  rm -f "$out" >/dev/null 2>&1 || true
+  mkdir -p "$(dirname "$out")"
+
+  local total
+  total="$(get_content_length "$url" || true)"
+
+  # Start download in background (quiet, no #### meter)
+  curl -fL --retry 3 --retry-delay 1 -o "$out" -sS "$url" &
+  local pid=$!
+
+  local last_print_ts=0
+  local width=34
+
+  # Print progress to stderr so stdout stays clean
+  while kill -0 "$pid" >/dev/null 2>&1; do
+    local now_s
+    now_s="$(date +%s 2>/dev/null || echo 0)"
+
+    # throttle to ~10 fps
+    if [ "$last_print_ts" != "0" ] && [ $((now_s*10)) -eq $((last_print_ts*10)) ]; then
+      sleep 0.1 || true
+      continue
+    fi
+    last_print_ts="$now_s"
+
+    local got
+    got="$(stat_size_bytes "$out")"
+
+    if [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
+      local pct=$(( got * 100 / total ))
+      printf "\r%s %s (%s/%s bytes)" \
+        "$label" "$(render_bar "$pct" "$width")" "$got" "$total" >&2
+    else
+      # unknown total size: show a “growing” bar + bytes downloaded
+      local t=$(( (got / 262144) % (width+1) )) # 256KB per tick-ish
+      local bar="$(printf '%0.s█' $(seq 1 "$t" 2>/dev/null || true))"
+      local pad=$(( width - t ))
+      [ "$pad" -lt 0 ] && pad=0
+      bar="${bar}$(printf '%0.s░' $(seq 1 "$pad" 2>/dev/null || true))"
+      printf "\r%s [%s] %s bytes" "$label" "$bar" "$got" >&2
+    fi
+
+    sleep 0.1 || true
+  done
+
+  # finish line
+  wait "$pid"
+  local rc=$?
+
+  # clear the progress line and print a clean newline
+  printf "\r\033[K" >&2
+  printf "\n" >&2
+
+  [ "$rc" -eq 0 ] || ui_die "Failed to download from ${url}"
+  [ -s "$out" ] || ui_die "Download completed but file is empty: $out"
+}
+
 ui_has_gum() { need_cmd gum; }
 
 ui_header() {
@@ -591,8 +705,7 @@ download_and_extract_single_exe() {
   mkdir -p "${extract_dir}"
 
   ui_info "Downloading ${name}.zip"
-  curl -fL --retry 3 --retry-delay 1 --progress-bar -o "${zip_path}" "${url}" \
-    || ui_die "Failed to download ${name} from ${url}"
+  download_file_with_progress "Downloading ${name}.zip" "${url}" "${zip_path}"
 
   ui_info "Unzipping ${name}.zip"
   rm -rf "${extract_dir:?}/"*
@@ -626,7 +739,7 @@ copy_engines_from_wix_to_vm() {
 
   ensure_local_tools_for_zip
 
-  ui_step "[10/11] Finalizing setup — Uploading engines"
+  ui_step "[10/12] Finalizing setup — Uploading engines"
 
   for name in "${ENGINE_NAMES[@]}"; do
     local dst="${remote_home}/${name}"
@@ -751,7 +864,7 @@ ensure_gcloud_auth() {
     return
   fi
 
-  ui_step "[2/11] Google account authentication"
+  ui_step "[2/12] Google account authentication"
   ui_info "Launching browser login…"
   if ! gcloud auth login --quiet --verbosity=error >/dev/null 2>&1; then
     ui_die "gcloud auth login failed."
@@ -839,7 +952,7 @@ auto_suffix_project_id() {
 }
 
 ensure_project_id_tui() {
-  ui_step "[3/11] Google Cloud project"
+  ui_step "[3/12] Google Cloud project"
 
   if [ -n "${PROJECT_ID:-}" ] && project_exists "${PROJECT_ID}"; then
     set_project "${PROJECT_ID}"
@@ -967,7 +1080,7 @@ billing_link_url() {
 }
 
 ensure_billing_linked_interactive() {
-  ui_step "[4/11] Billing check"
+  ui_step "[4/12] Billing check"
 
   if billing_is_enabled "${PROJECT_ID}"; then
     ui_ok "Billing linked"
@@ -998,7 +1111,7 @@ is_service_enabled() {
 }
 
 ensure_compute_api_enabled_interactive() {
-  ui_step "[5/11] Enabling Compute Engine API"
+  ui_step "[5/12] Enabling Compute Engine API"
 
   if is_service_enabled "compute.googleapis.com"; then
     ui_ok "Compute Engine API already enabled"
@@ -1078,7 +1191,7 @@ ensure_defaults() {
 }
 
 ensure_ssh_key() {
-  ui_step "[1/11] Preparing environment"
+  ui_step "[1/12] Preparing environment"
 
   need_cmd curl  && ui_ok "curl detected"  || ui_die "curl is required but not found"
   need_cmd unzip && ui_ok "unzip detected" || ui_die "unzip is required but not found"
@@ -1105,7 +1218,7 @@ instance_exists() {
 }
 
 create_instance_if_needed() {
-  ui_step "[7/11] Provisioning virtual machine"
+  ui_step "[7/12] Provisioning virtual machine"
 
   if instance_exists; then
     ui_ok "Instance already exists: ${INSTANCE_NAME} (${ZONE})"
@@ -1168,7 +1281,7 @@ wait_for_ssh_ready() {
 }
 
 ensure_credentials_tui() {
-  ui_step "[8/11] Alpaca configuration"
+  ui_step "[8/12] Alpaca configuration"
 
   if [ -n "${ALPACA_LIVE_API_KEY:-}" ] && [ -n "${ALPACA_LIVE_SECRET_KEY:-}" ] \
      && [ -n "${ALPACA_PAPER_API_KEY:-}" ] && [ -n "${ALPACA_PAPER_SECRET_KEY:-}" ]; then
@@ -1196,7 +1309,7 @@ write_exports_on_vm() {
   local ip="$1"
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
-  ui_step "[9/11] Remote configuration"
+  ui_step "[9/12] Remote configuration"
   ui_spin "Writing credentials to VM…" ssh -i "${key_path}" -o StrictHostKeyChecking=accept-new \
     "${REMOTE_USER}@${ip}" bash -s -- \
     "${ALPACA_LIVE_API_KEY}" "${ALPACA_LIVE_SECRET_KEY}" \
@@ -1274,7 +1387,7 @@ install_control_panel_on_vm() {
   local ip="$1"
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
-  ui_step "[11/11] Installing Control Panel"
+  ui_step "[11/12] Installing Control Panel"
 
   ui_spin "Installing control panel scripts on VM…" ssh -o LogLevel=ERROR -o StrictHostKeyChecking=accept-new -i "${key_path}" \
     "${REMOTE_USER}@${ip}" "bash -s" <<'EOF'
@@ -1415,36 +1528,36 @@ center_box() {
   # Usage: center_box $'line1\n\nline2'
   local msg="$1"
 
-  # terminal rows/cols (fallbacks)
-  local rows cols
-  rows="$(stty size 2>/dev/null | awk '{print $1}')"; rows="${rows:-24}"
-  cols="$(stty size 2>/dev/null | awk '{print $2}')"; cols="${cols:-80}"
+  # fixed terminal size for your product
+  local rows=24
+  local cols=80
 
-  # Vertical centering (keep your existing approach)
-  local pad_y=$(( (rows / 2) - 3 ))
-  [ "$pad_y" -lt 0 ] && pad_y=0
-  for _ in $(seq 1 "$pad_y"); do echo ""; done
-
-  # Compute longest visible line length (so we can center the *box*)
-  # We interpret \n etc via printf %b, then measure each line length.
+  # measure message: longest line + line count
   local longest=0
+  local lines=0
   while IFS= read -r line; do
-    # bash length is ok here (monospace). Emojis may be off by 1; acceptable.
+    lines=$((lines + 1))
     local len="${#line}"
     [ "$len" -gt "$longest" ] && longest="$len"
   done < <(printf "%b" "$msg")
 
-  # Box inner width:
-  # - gum style will add borders + padding "1 2"
-  # - so we choose a sane minimum width and cap to terminal width
-  local inner_w=$((longest + 4))          # 2 spaces left + 2 spaces right
-  [ "$inner_w" -lt 44 ] && inner_w=44     # minimum so it looks premium
-  local max_inner=$((cols - 10))
-  [ "$max_inner" -lt 20 ] && max_inner=20
-  [ "$inner_w" -gt "$max_inner" ] && inner_w="$max_inner"
+  # Gum adds border + padding "1 2"
+  # Total box height ~= message lines + 2(padding top/bot) + 2(border) = lines + 4
+  local box_h=$((lines + 4))
 
-  # Left margin to center the *box*
-  local left=$(( (cols - (inner_w + 6)) / 2 ))  # +6 approx for borders/padding
+  # Vertically center the whole box
+  local pad_y=$(( (rows - box_h) / 2 ))
+  [ "$pad_y" -lt 0 ] && pad_y=0
+  for _ in $(seq 1 "$pad_y"); do echo ""; done
+
+  # Box inner width:
+  # inner = longest line + 4 (2 spaces each side), clamp to look premium
+  local inner_w=$((longest + 4))
+  [ "$inner_w" -lt 44 ] && inner_w=44
+  [ "$inner_w" -gt 68 ] && inner_w=68   # fits nicely in 80 cols with margins
+
+  # Center the box horizontally. Approx total extra width from border+padding ~ 6 chars.
+  local left=$(( (cols - (inner_w + 6)) / 2 ))
   [ "$left" -lt 0 ] && left=0
 
   if has_gum; then
@@ -1456,7 +1569,7 @@ center_box() {
       --margin "0 0 0 ${left}" \
       --align center
   else
-    # Fallback: just print it (still vertically centered)
+    # fallback: simple centered-ish (still vertically centered)
     printf "%b\n" "$msg"
   fi
 }
@@ -1898,7 +2011,7 @@ ssh_into_instance() {
 }
 
 install_plan_confirm() {
-  ui_step "[6/11] Install plan"
+  ui_step "[6/12] Install plan"
 
   ui_kv_list \
     "OS" "$(detect_os)" \
@@ -1914,7 +2027,7 @@ install_plan_confirm() {
 
 completion_screen() {
   local ip="$1"
-  ui_step "[11/11] Complete"
+  ui_step "[12/12] Complete"
 
   ui_kv_list \
     "Instance" "${INSTANCE_NAME}" \
