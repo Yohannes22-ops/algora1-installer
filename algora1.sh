@@ -1682,18 +1682,21 @@ live_status_menu() {
     local engines
     engines="$(detect_running_engines_best_effort || true)"
 
-    if [ -z "${engines// }" ]; then
-      # No active engines — keep the same box style, just one line
-      if has_gum; then
-        gum style --border rounded --padding "2 4" --margin "2 0 0 0" \
-          --border-foreground 39 --foreground 39 --align center \
-          "NO ACTIVE ENGINE RUNNING"
-      else
-        echo "NO ACTIVE ENGINE RUNNING"
-      fi
-      sleep 1 || true
-      continue
-    fi
+    \
+if [ -z "${engines// }" ]; then
+  # No active engines — show minimal message
+  if has_gum; then
+    gum style --border rounded --padding "2 4" --margin "2 0 0 0" \
+      --border-foreground 39 --foreground 39 --align center \
+      "NO ACTIVE ENGINE RUNNING"
+  else
+    echo ""
+    echo "NO ACTIVE ENGINE RUNNING"
+    echo ""
+  fi
+  sleep 1 || true
+  continue
+fi
 
     # One or more engines active — show their live status blocks stacked.
     local e file
@@ -1719,7 +1722,7 @@ live_status_menu() {
   done
 }
 
-troubleshoot_menu() { {
+troubleshoot_menu() {
   local eng
   eng="$(detect_running_engine_best_effort || true)"
 
