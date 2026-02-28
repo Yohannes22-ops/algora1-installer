@@ -107,7 +107,6 @@ render_bar() {
 }
 
 download_file_with_progress() {
-  # download_file_with_progress "Label" "URL" "OUT_PATH"
   local label="$1"
   local url="$2"
   local out="$3"
@@ -120,11 +119,10 @@ download_file_with_progress() {
   local total
   total="$(get_content_length "$url" || true)"
 
-  # Start download in background (quiet, no #### meter)
   curl -fL --retry 3 --retry-delay 1 -o "$out" -sS "$url" &
   local pid=$!
 
-  local width=24  # bar width fits 80 cols cleanly
+  local width=24
 
   while kill -0 "$pid" >/dev/null 2>&1; do
     local got pct line
@@ -134,32 +132,33 @@ download_file_with_progress() {
       pct=$(( got * 100 / total ))
       line="${label} $(render_bar "$pct" "$width")"
     else
-      # unknown size: just animate a growing bar based on bytes
-      local t=$(( (got / 262144) % (width+1) ))  # 256KB steps
+      local t=$(( (got / 262144) % (width+1) ))
       local bar="$(printf '%0.s█' $(seq 1 "$t" 2>/dev/null || true))"
       local pad=$(( width - t )); [ "$pad" -lt 0 ] && pad=0
       bar="${bar}$(printf '%0.s░' $(seq 1 "$pad" 2>/dev/null || true))"
       line="${label} [${bar}]"
     fi
 
-    # overwrite the SAME line (no stacking)
     printf "\r\033[K%s" "$line" >&2
     sleep 0.1 || true
   done
 
+  # wait + validate FIRST
   wait "$pid"
   local rc=$?
 
-  # leave a final completed bar on screen
-  if [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
-    printf "\r\033[K%s %s\n" "$label" "$(render_bar 100 "$width")" >&2
-  else
-    # unknown total: just print "done"
-    printf "\r\033[K%s [done]\n" "$label" >&2
-  fi
-
   [ "$rc" -eq 0 ] || ui_die "Failed to download from ${url}"
   [ -s "$out" ] || ui_die "Download completed but file is empty: $out"
+
+  # NOW finalize in a way that can't be overwritten by the next print
+  if [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
+    printf "\r\033[K%s %s" "$label" "$(render_bar 100 "$width")" >&2
+  else
+    printf "\r\033[K%s [done]" "$label" >&2
+  fi
+
+  # critical: commit the line (move cursor to next line)
+  printf "\n" >&2
 }
 
 ui_has_gum() { need_cmd gum; }
@@ -691,7 +690,6 @@ download_and_extract_single_exe() {
   local extract_dir="${workdir}/${name}/extract"
   mkdir -p "${extract_dir}"
 
-  ui_info "Downloading ${name}.zip"
   download_file_with_progress "Downloading ${name}.zip" "${url}" "${zip_path}"
 
   ui_info "Unzipping ${name}.zip"
