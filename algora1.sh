@@ -1398,6 +1398,29 @@ hard_clear() {
 cursor_hide() { printf '\033[?25l' 2>/dev/null || true; }
 cursor_show() { printf '\033[?25h' 2>/dev/null || true; }
 
+center_box() {
+  # Usage: center_box "text to show"
+  local msg="$1"
+
+  # terminal rows (fallback 24)
+  local rows
+  rows="$(stty size 2>/dev/null | awk '{print $1}')"
+  rows="${rows:-24}"
+
+  # approx box height = 5 lines (top/bottom border + padding)
+  local pad=$(( (rows / 2) - 3 ))
+  [ "$pad" -lt 0 ] && pad=0
+
+  # print blank lines to push box to vertical center
+  for _ in $(seq 1 "$pad"); do echo ""; done
+
+  if has_gum; then
+    gum style --border rounded --padding "1 2" --border-foreground 39 "$msg"
+  else
+    echo "$msg"
+  fi
+}
+
 choose() {
   local title="$1"; shift
   if has_gum; then
@@ -1654,40 +1677,52 @@ running_sessions_menu() {
 }
 
 live_status_menu() {
+  cursor_hide
+
+  # 1) Detect an engine ONCE when entering Live Status
+  local eng
+  eng="$(detect_running_engine_best_effort || true)"
+
+  # 2) If none, show centered box and wait for Enter to return (no twitch)
+  if [ -z "$eng" ]; then
+    hard_clear
+    center_box "No active engine detected.\n\nPress Enter to return to the menu."
+    cursor_show
+    # Wait for Enter
+    read -r _ || true
+    hard_clear
+    return 0
+  fi
+
+  # 3) If engine exists, do the live tail loop like before
   local stop=0
   trap 'stop=1' INT
-  cursor_hide
 
   while true; do
     if [ "$stop" -eq 1 ]; then
       trap - INT
+      cursor_show
       echo ""
       return 0
     fi
 
-    local eng
+    # Re-detect engine each tick; if it stops, show centered message + Enter to return
     eng="$(detect_running_engine_best_effort || true)"
-
-    hard_clear
-
     if [ -z "$eng" ]; then
-      # No engine detected — show a simple one-line message in the same blue box style
-      if has_gum; then
-        gum style --border rounded --padding "1 2" --border-foreground 39 \
-          "No active engine detected."
-      else
-        echo "No active engine detected."
-      fi
-      sleep 1 || true
-      continue
+      trap - INT
+      hard_clear
+      center_box "Engine stopped.\n\nPress Enter to return to the menu."
+      cursor_show
+      read -r _ || true
+      hard_clear
+      return 0
     fi
 
     local file
     file="$(live_status_for_engine "$eng")"
 
+    hard_clear
     touch "$file" >/dev/null 2>&1 || true
-
-    # Show current live status file contents
     cat "$file" 2>/dev/null || echo "(no status yet)"
     sleep 1 || true
   done
@@ -1703,7 +1738,7 @@ troubleshoot_menu() {
     info "Engine detected: $eng"
   else
     local choice
-    choice="$(choose "Troubleshoot" \
+    choice="$(choose "System Activity" \
       "bexp_investing.log" \
       "tsla_investing.log" \
       "nvda_investing.log" \
@@ -1751,13 +1786,13 @@ main_loop() {
     selection="$(choose "Select an option" \
       "Running session" \
       "Live Status" \
-      "Troubleshoot" \
+      "System Activity" \
       "Exit")"
 
     case "$selection" in
       "Running session") running_sessions_menu ;;
       "Live Status") live_status_menu ;;
-      "Troubleshoot") troubleshoot_menu ;;
+      "System Activity") troubleshoot_menu ;;
       "Exit") exit 0 ;;
       *) exit 0 ;;
     esac
