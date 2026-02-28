@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cd "$HOME" >/dev/null 2>&1 || true
+
 export CLOUDSDK_COMPONENT_MANAGER_DISABLE_UPDATE_CHECK=1
 export CLOUDSDK_CORE_DISABLE_USAGE_REPORTING=1
 
@@ -18,10 +20,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_8a6cde7b142043b2890f36a1c64b6bfd.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_1899670169594f5aabc78c03c5c3cbfb.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_f2092cedc8ec42f9b3e2bcf45a812a6b.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_7086029cb6e448b8bd3948d2def2e7e6.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_2c65aad7116d44bdac88d1583034c49b.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_33b96aaa07f54285b71f2fd3db489606.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_0130b58c848145f092712c50439f44d2.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_df65cf4c16ab4e03b12e4d010460bcd7.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -1499,8 +1501,14 @@ delete_session() {
   local s="$1"
   [ -n "$s" ] || return 0
 
-  screen -S "$s" -X quit >/dev/null 2>&1 || true
+  # screen -ls gives "1234.name" — convert to "name"
+  local name="${s#*.}"
 
+  # try both forms (some screen versions accept one or the other)
+  screen -S "$name" -X quit >/dev/null 2>&1 || true
+  screen -S "$s"    -X quit >/dev/null 2>&1 || true
+
+  # wait for it to disappear
   for _ in {1..20}; do
     if ! list_sessions_raw | grep -Fxq "$s"; then
       return 0
@@ -1559,6 +1567,8 @@ live_status_for_engine() {
 }
 
 clear_logs_menu() {
+  cd "$HOME" || return 0
+
   local choice
   choice="$(choose "Clear logs" \
     "bexp_investing.log" \
@@ -1582,7 +1592,7 @@ clear_logs_menu() {
   fi
 
   if confirm "Clear '$choice'?"; then
-    : > "$choice" 2>/dev/null || true
+    : > "$HOME/$choice" 2>/dev/null || true
     ok "Cleared: $choice"
   fi
 
@@ -1617,7 +1627,7 @@ running_sessions_menu() {
   cnt="$(session_count)"
 
   if [ "$cnt" -gt 1 ]; then
-    warn "Multiple screen sessions detected (${cnt}). One-session maxiumum per account deleting extras."
+    warn "Multiple screen sessions detected (${cnt}). One-session maximum per account; deleting extras."
     if confirm "Delete all sessions now? (recommended)"; then
       delete_all_sessions
       ok "All sessions deleted."
