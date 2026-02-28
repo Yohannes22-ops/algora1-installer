@@ -1471,10 +1471,8 @@ choose() {
       --header "$title" \
       --header.foreground 39 \
       --item.foreground 39 \
-      --cursor.foreground 231 \
-      --cursor.background 39 \
-      --selected.foreground 231 \
-      --selected.background 39 \
+      --selected.foreground 39 \
+      --cursor.foreground 33 \
       "$@"
   else
     echo "$title"
