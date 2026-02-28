@@ -1400,6 +1400,11 @@ hard_clear() {
   printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 }
 
+cursor_hide() { printf '\033[?25l' 2>/dev/null || true; }
+cursor_show() { printf '\033[?25h' 2>/dev/null || true; }
+# Always restore cursor on exit (avoid "shadow block" lingering)
+trap 'cursor_show' EXIT
+
 choose() {
   local title="$1"; shift
   if has_gum; then
@@ -1567,49 +1572,18 @@ live_status_for_engine() {
   esac
 }
 
-clear_logs_menu() {
-  cd "$HOME" || return 0
 
-  local choice
-  choice="$(choose "Clear logs" \
-    "bexp_investing.log" \
-    "tsla_investing.log" \
-    "nvda_investing.log" \
-    "pmny_investing.log" \
-    "Clear all logs" \
-    "Back")"
-
-  [ "$choice" = "Back" ] && return 0
-
-  if [ "$choice" = "Clear all logs" ]; then
-    if confirm "Clear all investing logs?"; then
-      : > "$HOME/bexp_investing.log" 2>/dev/null || true
-      : > "$HOME/tsla_investing.log" 2>/dev/null || true
-      : > "$HOME/nvda_investing.log" 2>/dev/null || true
-      : > "$HOME/pmny_investing.log" 2>/dev/null || true
-      ok "Logs cleared."
+detect_running_engines_best_effort() {
+  # Returns space-separated engine codes in priority order
+  local out=()
+  local e
+  for e in "${ENGINE_NAMES[@]}"; do
+    if pgrep -af "(^|/)$e( |$)" >/dev/null 2>&1; then
+      out+=("$e")
     fi
-    return 0
-  fi
-
-  if confirm "Clear '$choice'?"; then
-    : > "$HOME/$choice" 2>/dev/null || true
-    ok "Cleared: $choice"
-  fi
-
-  return 0
-}
-
-detect_running_engine_best_effort() {
-  local line
-  line="$(pgrep -af '(BEXP|PMNY|TSLA|NVDA)' 2>/dev/null | head -n 1 || true)"
-  case "$line" in
-    *BEXP*) echo "BEXP" ;;
-    *TSLA*) echo "TSLA" ;;
-    *NVDA*) echo "NVDA" ;;
-    *PMNY*) echo "PMNY" ;;
-    *) echo "" ;;
-  esac
+  done
+  printf "%s
+" "${out[*]}"
 }
 
 draw_header_once() {
@@ -1661,7 +1635,9 @@ running_sessions_menu() {
     hard_clear
 
     # Attach to the new session
+    cursor_hide
     screen -r "$name" || true
+    cursor_show
 
     # When user detaches back to control panel, hard-clear so box redraws cleanly
     hard_clear
@@ -1675,7 +1651,9 @@ running_sessions_menu() {
     case "$action" in
       "Connect")
         hard_clear
+        cursor_hide
         screen -r "$s" || true
+        cursor_show
         hard_clear
         return 0
         ;;
@@ -1685,27 +1663,7 @@ running_sessions_menu() {
 }
 
 live_status_menu() {
-  local eng
-  eng="$(detect_running_engine_best_effort || true)"
-
-  local file=""
-  if [ -n "$eng" ]; then
-    file="$(live_status_for_engine "$eng")"
-    info "Engine detected: $eng"
-  else
-    local choice
-    choice="$(choose "Live Status" \
-      "bexp_live_status.txt" \
-      "tsla_live_status.txt" \
-      "nvda_live_status.txt" \
-      "pmny_live_status.txt" \
-      "Back")"
-    [ "$choice" = "Back" ] && return 0
-    file="$choice"
-  fi
-
-  touch "$file" >/dev/null 2>&1 || true
-  info "Viewing: $file (Ctrl+C to return)"
+  cd "$HOME" || return 0
 
   local stop=0
   trap 'stop=1' INT
@@ -1713,18 +1671,61 @@ live_status_menu() {
   while true; do
     if [ "$stop" -eq 1 ]; then
       trap - INT
+      cursor_show
       echo ""
       return 0
     fi
 
     hard_clear
+    cursor_hide
 
-    cat "$file" 2>/dev/null || echo "(no status yet)"
+    local engines
+    engines="$(detect_running_engines_best_effort || true)"
+
+    if [ -z "${engines// }" ]; then
+      # No active engines — show centered blue box (no selection required)
+      if has_gum; then
+        gum style --border rounded --padding "2 4" --margin "2 0 0 0" \
+          --border-foreground 39 --foreground 39 --align center \
+          "$(printf "NO ACTIVE ENGINE RUNNING\n\nStart one from:\nRunning session → Start new session → Run investment engine\n\n(Ctrl+C to go back)")"
+      else
+        echo "========================================"
+        echo "          NO ACTIVE ENGINE RUNNING      "
+        echo ""
+        echo "Start one from: Running session → Start new session → Run investment engine"
+        echo ""
+        echo "(Ctrl+C to go back)"
+        echo "========================================"
+      fi
+      sleep 1 || true
+      continue
+    fi
+
+    # One or more engines active — show their live status blocks stacked.
+    local e file
+    for e in $engines; do
+      file="$(live_status_for_engine "$e")"
+      printf "\n"
+      if has_gum; then
+        gum style --foreground 39 --bold "LIVE STATUS — ${e}" || true
+      else
+        echo "LIVE STATUS — ${e}"
+      fi
+      echo ""
+      if [ -f "$HOME/$file" ]; then
+        cat "$HOME/$file" 2>/dev/null || echo "(no status yet)"
+      else
+        echo "(no status yet)"
+      fi
+      echo ""
+    done
+
+    # small refresh interval
     sleep 1 || true
   done
 }
 
-troubleshoot_menu() {
+troubleshoot_menu() { {
   local eng
   eng="$(detect_running_engine_best_effort || true)"
 
@@ -1782,14 +1783,12 @@ main_loop() {
       "Running session" \
       "Live Status" \
       "Troubleshoot" \
-      "Clear logs" \
       "Exit")"
 
     case "$selection" in
       "Running session") running_sessions_menu ;;
       "Live Status") live_status_menu ;;
       "Troubleshoot") troubleshoot_menu ;;
-      "Clear logs") clear_logs_menu ;;
       "Exit") exit 0 ;;
       *) exit 0 ;;
     esac
@@ -1807,6 +1806,56 @@ if ! command -v screen >/dev/null 2>&1; then
     sudo apt-get install -y screen >/dev/null 2>&1 || true
   fi
 fi
+
+# ---- timezone + midnight log truncation (systemd timer) ----
+sudo timedatectl set-timezone America/New_York >/dev/null 2>&1 || true
+
+ME="$(whoami)"
+
+sudo tee /usr/local/bin/algora1-truncate-logs >/dev/null <<'TRUNC'
+#!/usr/bin/env bash
+set -euo pipefail
+
+USER_NAME="${1:-}"
+if [ -z "$USER_NAME" ]; then
+  USER_NAME="$(whoami)"
+fi
+
+HOME_DIR="$(getent passwd "$USER_NAME" | cut -d: -f6 || true)"
+[ -n "$HOME_DIR" ] || HOME_DIR="$HOME"
+
+files=( "bexp_investing.log" "tsla_investing.log" "nvda_investing.log" "pmny_investing.log" )
+for f in "${files[@]}"; do
+  : > "${HOME_DIR}/${f}" 2>/dev/null || true
+done
+TRUNC
+sudo chmod +x /usr/local/bin/algora1-truncate-logs
+
+sudo tee /etc/systemd/system/algora1-truncate-logs.service >/dev/null <<EOF
+[Unit]
+Description=ALGORA1 truncate investing logs (daily)
+
+[Service]
+Type=oneshot
+User=${ME}
+ExecStart=/usr/local/bin/algora1-truncate-logs ${ME}
+EOF
+
+sudo tee /etc/systemd/system/algora1-truncate-logs.timer >/dev/null <<'EOF'
+[Unit]
+Description=Run ALGORA1 log truncation daily at midnight
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload >/dev/null 2>&1 || true
+sudo systemctl enable --now algora1-truncate-logs.timer >/dev/null 2>&1 || true
+
 
 EOF
 }
