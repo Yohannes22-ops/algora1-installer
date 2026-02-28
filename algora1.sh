@@ -67,7 +67,7 @@ ui_header() {
   if ui_has_gum; then
     gum style --border rounded --padding "1 2" --margin "0 0 1 0" \
       --border-foreground ${C_ACCENT} \
-      "$(printf "ALGORA1 Software\nAutomated investment engine deployment.\nmodern Terminal UI")" >&2
+      "$(printf "ALGORA1 Software\nAutomated investment engine deployment.\nModern Terminal UI")" >&2
   else
     log "ALGORA1 Software"
     log "Automated investment engine deployment."
@@ -1408,24 +1408,48 @@ center_box() {
   # Usage: center_box $'line1\n\nline2'
   local msg="$1"
 
-  local rows
-  rows="$(stty size 2>/dev/null | awk '{print $1}')"
-  rows="${rows:-24}"
+  # terminal rows/cols (fallbacks)
+  local rows cols
+  rows="$(stty size 2>/dev/null | awk '{print $1}')"; rows="${rows:-24}"
+  cols="$(stty size 2>/dev/null | awk '{print $2}')"; cols="${cols:-80}"
 
-  local pad=$(( (rows / 2) - 3 ))
-  [ "$pad" -lt 0 ] && pad=0
+  # Vertical centering (keep your existing approach)
+  local pad_y=$(( (rows / 2) - 3 ))
+  [ "$pad_y" -lt 0 ] && pad_y=0
+  for _ in $(seq 1 "$pad_y"); do echo ""; done
 
-  for _ in $(seq 1 "$pad"); do echo ""; done
+  # Compute longest visible line length (so we can center the *box*)
+  # We interpret \n etc via printf %b, then measure each line length.
+  local longest=0
+  while IFS= read -r line; do
+    # bash length is ok here (monospace). Emojis may be off by 1; acceptable.
+    local len="${#line}"
+    [ "$len" -gt "$longest" ] && longest="$len"
+  done < <(printf "%b" "$msg")
+
+  # Box inner width:
+  # - gum style will add borders + padding "1 2"
+  # - so we choose a sane minimum width and cap to terminal width
+  local inner_w=$((longest + 4))          # 2 spaces left + 2 spaces right
+  [ "$inner_w" -lt 44 ] && inner_w=44     # minimum so it looks premium
+  local max_inner=$((cols - 10))
+  [ "$max_inner" -lt 20 ] && max_inner=20
+  [ "$inner_w" -gt "$max_inner" ] && inner_w="$max_inner"
+
+  # Left margin to center the *box*
+  local left=$(( (cols - (inner_w + 6)) / 2 ))  # +6 approx for borders/padding
+  [ "$left" -lt 0 ] && left=0
 
   if has_gum; then
-    # %b interprets \n etc. Pipe so gum receives real newlines.
     printf "%b" "$msg" | gum style \
       --border rounded \
       --padding "1 2" \
       --border-foreground 39 \
+      --width "$inner_w" \
+      --margin "0 0 0 ${left}" \
       --align center
   else
-    # Fallback: interpret escapes too
+    # Fallback: just print it (still vertically centered)
     printf "%b\n" "$msg"
   fi
 }
@@ -1447,8 +1471,10 @@ choose() {
       --header "$title" \
       --header.foreground 39 \
       --item.foreground 39 \
-      --selected.foreground 39 \
-      --cursor.foreground 33 \
+      --cursor.foreground 231 \
+      --cursor.background 39 \
+      --selected.foreground 231 \
+      --selected.background 39 \
       "$@"
   else
     echo "$title"
@@ -1503,7 +1529,8 @@ confirm() {
   if has_gum; then
     gum confirm \
       --prompt.foreground 39 \
-      --selected.foreground 39 \
+      --selected.foreground 231 \
+      --selected.background 39 \
       --unselected.foreground 245 \
       "$prompt"
   else
