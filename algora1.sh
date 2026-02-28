@@ -140,8 +140,6 @@ ui_choose() {
       --selected.background 0 \
       --cursor.foreground ${C_CURSOR} \
       --cursor.background 0 \
-      --unselected.foreground ${C_ACCENT} \
-      --unselected.background 0 \
       "$@"
   else
     printf "%s\n" "$title" >&2
@@ -1310,12 +1308,10 @@ choose() {
       --header "$title" \
       --header.foreground 39 \
       --item.foreground 39 \
-      --unselected.foreground 39 \
       --selected.foreground 39 \
       --selected.background 0 \
       --cursor.foreground 33 \
       --cursor.background 0 \
-      --unselected.background 0 \
       "$@"
   else
     echo "$title"
@@ -1410,12 +1406,10 @@ choose() {
       --header "$title" \
       --header.foreground 39 \
       --item.foreground 39 \
-      --unselected.foreground 39 \
       --selected.foreground 39 \
       --selected.background 0 \
       --cursor.foreground 33 \
       --cursor.background 0 \
-      --unselected.background 0 \
       "$@"
   else
     echo "$title"
