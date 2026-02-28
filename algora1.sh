@@ -55,6 +55,12 @@ detect_os() {
   esac
 }
 
+set_term_title() {
+  # Works in macOS Terminal, iTerm2, and most Linux terminals
+  # OSC 0 → set window+tab title
+  printf '\033]0;%s\007' "$1"
+}
+
 ui_has_gum() { need_cmd gum; }
 
 ui_header() {
@@ -1421,6 +1427,16 @@ center_box() {
   fi
 }
 
+secs_until_midnight_et() {
+  # seconds until next midnight in America/New_York (ET)
+  local now_s next_s
+  now_s="$(TZ=America/New_York date +%s)"
+  next_s="$(TZ=America/New_York date -d 'tomorrow 00:00:00' +%s)"
+  local secs=$((next_s - now_s))
+  [ "$secs" -lt 5 ] && secs=5
+  printf "%s\n" "$secs"
+}
+
 choose() {
   local title="$1"; shift
   if has_gum; then
@@ -1760,7 +1776,13 @@ troubleshoot_menu() {
     # tail will exit with code 130 on Ctrl+C.
     # With "set -e", that would kill the whole script unless we neutralize it.
     set +e
-    tail -n 200 -f "$logfile"
+    local secs today
+    secs="$(secs_until_midnight_et)"
+    today="$(TZ=America/New_York date +%F)"
+
+    # Show only today's lines (ET). Auto-stops at ET midnight so the loop restarts with new date.
+    timeout "$secs" tail -n 200 -F "$logfile" 2>/dev/null \
+      | awk -v d="$today" 'index($0, d) == 1 { print; fflush() }'
     local rc=$?
     set -e
 
@@ -1818,6 +1840,7 @@ ssh_into_instance_menu() {
   local ip="$1"
   local key_path="${HOME}/.ssh/${KEY_NAME}"
   ui_info "Connecting to VM (control panel)…"
+  set_term_title "ALGORA1 Algorithmic Investment Software - $(detect_os)"
   exec ssh -tt \
     -o LogLevel=ERROR \
     -o StrictHostKeyChecking=accept-new \
@@ -1833,6 +1856,7 @@ ssh_into_instance() {
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
   ui_info "Connecting to VM…"
+  set_term_title "ALGORA1 Algorithmic Investment Software - $(detect_os)"
   exec ssh -tt \
     -o LogLevel=ERROR \
     -o StrictHostKeyChecking=accept-new \
