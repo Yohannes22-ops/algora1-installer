@@ -1395,6 +1395,9 @@ hard_clear() {
   printf '\033[H\033[2J\033[3J' 2>/dev/null || true
 }
 
+cursor_hide() { printf '\033[?25l' 2>/dev/null || true; }
+cursor_show() { printf '\033[?25h' 2>/dev/null || true; }
+
 choose() {
   local title="$1"; shift
   if has_gum; then
@@ -1555,37 +1558,6 @@ live_status_for_engine() {
   esac
 }
 
-clear_logs_menu() {
-  local choice
-  choice="$(choose "Clear logs" \
-    "bexp_investing.log" \
-    "tsla_investing.log" \
-    "nvda_investing.log" \
-    "pmny_investing.log" \
-    "Clear all logs" \
-    "Back")"
-
-  [ "$choice" = "Back" ] && return 0
-
-  if [ "$choice" = "Clear all logs" ]; then
-    if confirm "Clear all investing logs?"; then
-      : > "bexp_investing.log" 2>/dev/null || true
-      : > "tsla_investing.log" 2>/dev/null || true
-      : > "nvda_investing.log" 2>/dev/null || true
-      : > "pmny_investing.log" 2>/dev/null || true
-      ok "Logs cleared."
-    fi
-    return 0
-  fi
-
-  if confirm "Clear '$choice'?"; then
-    : > "$choice" 2>/dev/null || true
-    ok "Cleared: $choice"
-  fi
-
-  return 0
-}
-
 detect_running_engine_best_effort() {
   local line
   line="$(pgrep -af '(BEXP|PMNY|TSLA|NVDA)' 2>/dev/null | head -n 1 || true)"
@@ -1647,11 +1619,14 @@ running_sessions_menu() {
     hard_clear
 
     # Attach to the new session
+    cursor_hide
     screen -r "$name" || true
+    cursor_show
 
     # When user detaches back to control panel, hard-clear so box redraws cleanly
     hard_clear
     return 0
+
   else
     local s
     s="$(get_only_session)"
@@ -1661,7 +1636,9 @@ running_sessions_menu() {
     case "$action" in
       "Connect")
         hard_clear
+        cursor_hide
         screen -r "$s" || true
+        cursor_show
         hard_clear
         return 0
         ;;
@@ -1677,30 +1654,9 @@ running_sessions_menu() {
 }
 
 live_status_menu() {
-  local eng
-  eng="$(detect_running_engine_best_effort || true)"
-
-  local file=""
-  if [ -n "$eng" ]; then
-    file="$(live_status_for_engine "$eng")"
-    info "Engine detected: $eng"
-  else
-    local choice
-    choice="$(choose "Live Status" \
-      "bexp_live_status.txt" \
-      "tsla_live_status.txt" \
-      "nvda_live_status.txt" \
-      "pmny_live_status.txt" \
-      "Back")"
-    [ "$choice" = "Back" ] && return 0
-    file="$choice"
-  fi
-
-  touch "$file" >/dev/null 2>&1 || true
-  info "Viewing: $file (Ctrl+C to return)"
-
   local stop=0
   trap 'stop=1' INT
+  cursor_hide
 
   while true; do
     if [ "$stop" -eq 1 ]; then
@@ -1709,8 +1665,29 @@ live_status_menu() {
       return 0
     fi
 
+    local eng
+    eng="$(detect_running_engine_best_effort || true)"
+
     hard_clear
 
+    if [ -z "$eng" ]; then
+      # No engine detected — show a simple one-line message in the same blue box style
+      if has_gum; then
+        gum style --border rounded --padding "1 2" --border-foreground 39 \
+          "No active engine detected."
+      else
+        echo "No active engine detected."
+      fi
+      sleep 1 || true
+      continue
+    fi
+
+    local file
+    file="$(live_status_for_engine "$eng")"
+
+    touch "$file" >/dev/null 2>&1 || true
+
+    # Show current live status file contents
     cat "$file" 2>/dev/null || echo "(no status yet)"
     sleep 1 || true
   done
@@ -1755,6 +1732,7 @@ troubleshoot_menu() {
     # If user hit Ctrl+C, return to menu
     if [ "$stop" -eq 1 ]; then
       trap - INT
+      cursor_show
       echo ""
       return 0
     fi
@@ -1766,6 +1744,7 @@ troubleshoot_menu() {
 
 main_loop() {
   while true; do
+    cursor_show
     draw_header_once
 
     local selection
@@ -1773,14 +1752,12 @@ main_loop() {
       "Running session" \
       "Live Status" \
       "Troubleshoot" \
-      "Clear logs" \
       "Exit")"
 
     case "$selection" in
       "Running session") running_sessions_menu ;;
       "Live Status") live_status_menu ;;
       "Troubleshoot") troubleshoot_menu ;;
-      "Clear logs") clear_logs_menu ;;
       "Exit") exit 0 ;;
       *) exit 0 ;;
     esac
