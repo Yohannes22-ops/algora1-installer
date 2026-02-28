@@ -20,10 +20,10 @@ ENGINE_NAMES=( "BEXP" "PMNY" "TSLA" "NVDA" )
 
 zip_url_for_engine() {
   case "$1" in
-    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_8fb889234c184c8ea212ebf6325776ab.zip" ;;
-    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_4f9f1b9c9db641f7b463b217a4aad1d2.zip" ;;
-    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_eaba9180a74c4904893bfede22457e4b.zip" ;;
-    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_7a8e4a5deb7c404b9ec0600f19d8bd2f.zip" ;;
+    BEXP) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_99929c7ade0e4ca58f08b36df71b114b.zip" ;;
+    PMNY) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_82983f1c73ce419cbe764bb51a15f8a2.zip" ;;
+    TSLA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_911bb61076754adcbeee961efac3f3a6.zip" ;;
+    NVDA) echo "https://ce61ee09-0950-4d0d-b651-266705220b65.usrfiles.com/archives/ce61ee_b9b28113b9e948cd9b39ea322bc0c4e4.zip" ;;
     *) echo "" ;;
   esac
 }
@@ -1480,9 +1480,9 @@ warn() { printf "WARN %s\n" "$*" >&2; }
 
 list_sessions_raw() {
   command -v screen >/dev/null 2>&1 || return 0
-  screen -ls 2>/dev/null \
-    | sed -n 's/^[[:space:]]*\([0-9]\+\.[^[:space:]]\+\)[[:space:]].*$/\1/p' \
-    || true
+  screen -ls 2>/dev/null | awk '
+    $1 ~ /^[0-9]+\./ { gsub(/\r/,"",$1); print $1 }
+  ' || true
 }
 
 session_count() {
@@ -1501,20 +1501,21 @@ delete_session() {
   local s="$1"
   [ -n "$s" ] || return 0
 
-  # screen -ls gives "1234.name" — convert to "name"
   local name="${s#*.}"
 
-  # try both forms (some screen versions accept one or the other)
-  screen -S "$name" -X quit >/dev/null 2>&1 || true
+  # try both identifiers
   screen -S "$s"    -X quit >/dev/null 2>&1 || true
+  screen -S "$name" -X quit >/dev/null 2>&1 || true
 
   # wait for it to disappear
-  for _ in {1..20}; do
+  for _ in {1..40}; do
     if ! list_sessions_raw | grep -Fxq "$s"; then
       return 0
     fi
     sleep 0.1 || true
   done
+
+  warn "Could not delete session '$s' (it may be attached/running under a different user)."
   return 0
 }
 
@@ -1751,6 +1752,7 @@ troubleshoot_menu() {
 
   touch "$logfile" >/dev/null 2>&1 || true
   info "Tailing: $logfile (Ctrl+C to return)"
+  info "Note: stop the engine to fully clear logs."
 
   # Ctrl+C should return to menu (not exit SSH)
   local stop=0
