@@ -74,6 +74,13 @@ ui_header() {
   fi
 }
 
+session_pretty_name() {
+  # input: "2758.investing" -> output: "investing"
+  local raw="${1:-}"
+  raw="${raw##*/}"   # safety: strip any path
+  echo "${raw#*.}"   # strip up to first dot
+}
+
 ui_step() {
   local label="$1"
   if ui_has_gum; then
@@ -1676,42 +1683,37 @@ running_sessions_menu() {
     echo "" >&2
     name="$(input "Session name (default: investing):")"
     name="${name:-investing}"
-    # Basic sanitize
     name="$(echo "$name" | tr -d '[:space:]')"
     [[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || { warn "Invalid name. Use letters/numbers/_/- only."; return 0; }
 
     create_new_session "$name"
 
-    # Remove the input prompt + typed session name from the visible terminal
     hard_clear
-
-    # Attach to the new session
     cursor_hide
     screen -r "$name" || true
     cursor_show
-
-    # When user detaches back to control panel, hard-clear so box redraws cleanly
     hard_clear
     return 0
 
   else
-    local s
-    s="$(get_only_session)"
-    local action
+    local s_raw s_name action
+    s_raw="$(get_only_session)"
+    s_name="$(session_pretty_name "$s_raw")"
+
     action="$(choose "Running session" "Connect" "Delete session" "Back")"
 
     case "$action" in
       "Connect")
         hard_clear
         cursor_hide
-        screen -r "$s" || true
+        screen -r "$s_raw" || true
         cursor_show
         hard_clear
         return 0
         ;;
       "Delete session")
-        if confirm "Delete session '$s'? This will stop any running engine."; then
-          delete_session "$s"
+        if confirm "Delete session '${s_name}'? This will stop any running engine."; then
+          delete_session "$s_raw"
           ok "Session deleted."
         fi
         ;;
@@ -1868,7 +1870,7 @@ ssh_into_instance_menu() {
   local ip="$1"
   local key_path="${HOME}/.ssh/${KEY_NAME}"
   ui_info "Connecting to VM (control panel)…"
-  set_term_title "ALGORA1 Algorithmic Investment Software - $(detect_os)"
+  set_term_title "ALGORA1 Software - $(detect_os)"
   exec ssh -tt \
     -o LogLevel=ERROR \
     -o StrictHostKeyChecking=accept-new \
@@ -1884,7 +1886,7 @@ ssh_into_instance() {
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
   ui_info "Connecting to VM…"
-  set_term_title "ALGORA1 Algorithmic Investment Software - $(detect_os)"
+  set_term_title "ALGORA1 Software - $(detect_os)"
   exec ssh -tt \
     -o LogLevel=ERROR \
     -o StrictHostKeyChecking=accept-new \
