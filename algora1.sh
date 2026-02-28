@@ -1231,7 +1231,7 @@ customize_motd_on_vm() {
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
   ui_spin "Customizing VM login banner…" ssh -o LogLevel=ERROR -o StrictHostKeyChecking=accept-new -i "${key_path}" \
-    "${REMOTE_USER}@${ip}" "bash -s" <<'EOF'
+    "${REMOTE_USER}@${ip}" "bash -s" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
@@ -1255,7 +1255,7 @@ printf "\033[1mOne-session mode:\033[0m only one screen session allowed at a tim
 EOT
 
 sudo chmod +x /etc/update-motd.d/00-algora1-header
-EOF
+REMOTE_SCRIPT
 
   ui_ok "Login banner installed"
 }
@@ -1267,7 +1267,7 @@ install_control_panel_on_vm() {
   ui_step "[11/11] Installing Control Panel"
 
   ui_spin "Installing control panel scripts on VM…" ssh -o LogLevel=ERROR -o StrictHostKeyChecking=accept-new -i "${key_path}" \
-    "${REMOTE_USER}@${ip}" "bash -s" <<'EOF'
+    "${REMOTE_USER}@${ip}" "bash -s" <<'REMOTE_CP'
 set -euo pipefail
 
 has_gum() { command -v gum >/dev/null 2>&1; }
@@ -1683,19 +1683,13 @@ live_status_menu() {
     engines="$(detect_running_engines_best_effort || true)"
 
     if [ -z "${engines// }" ]; then
-      # No active engines — show centered blue box (no selection required)
+      # No active engines — keep the same box style, just one line
       if has_gum; then
         gum style --border rounded --padding "2 4" --margin "2 0 0 0" \
           --border-foreground 39 --foreground 39 --align center \
-          "$(printf "NO ACTIVE ENGINE RUNNING\n\nStart one from:\nRunning session → Start new session → Run investment engine\n\n(Ctrl+C to go back)")"
+          "NO ACTIVE ENGINE RUNNING"
       else
-        echo "========================================"
-        echo "          NO ACTIVE ENGINE RUNNING      "
-        echo ""
-        echo "Start one from: Running session → Start new session → Run investment engine"
-        echo ""
-        echo "(Ctrl+C to go back)"
-        echo "========================================"
+        echo "NO ACTIVE ENGINE RUNNING"
       fi
       sleep 1 || true
       continue
@@ -1747,6 +1741,7 @@ troubleshoot_menu() { {
 
   touch "$logfile" >/dev/null 2>&1 || true
   info "Tailing: $logfile (Ctrl+C to return)"
+  info "Stop the engine to fully clear logs"
 
   # Ctrl+C should return to menu (not exit SSH)
   local stop=0
@@ -1856,7 +1851,7 @@ sudo systemctl daemon-reload >/dev/null 2>&1 || true
 sudo systemctl enable --now algora1-truncate-logs.timer >/dev/null 2>&1 || true
 
 
-EOF
+REMOTE_CP
 }
 
 ssh_into_instance_menu() {
