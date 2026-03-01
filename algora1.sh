@@ -1985,7 +1985,7 @@ ssh_into_instance_menu() {
   local ip="$1"
   local key_path="${HOME}/.ssh/${KEY_NAME}"
   ui_info "Connecting to VM (control panel)…"
-  set_term_title "ALGORA1 Software - $(detect_os)"
+  set_term_title "ALGORA1 TUI - $(detect_os)"
   exec ssh -tt \
     -o LogLevel=ERROR \
     -o StrictHostKeyChecking=accept-new \
@@ -2001,7 +2001,7 @@ ssh_into_instance() {
   local key_path="${HOME}/.ssh/${KEY_NAME}"
 
   ui_info "Connecting to VM…"
-  set_term_title "ALGORA1 Software - $(detect_os)"
+  set_term_title "ALGORA1 TUI - $(detect_os)"
   exec ssh -tt \
     -o LogLevel=ERROR \
     -o StrictHostKeyChecking=accept-new \
